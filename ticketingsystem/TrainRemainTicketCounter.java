@@ -43,7 +43,7 @@ class SeatLevelAtomicRemainTicketCounter extends TrainRemainTicketCounter {
 
     @Override
     public int inquiryRemainTicket(int departure, int arrival) {
-        if (!this.rangeLegalCheck(departure, arrival)) {
+        if (this.rangeLegalCheck(departure, arrival)) {
             // 区间不合法直接返回0
             return 0;
         }
@@ -51,12 +51,12 @@ class SeatLevelAtomicRemainTicketCounter extends TrainRemainTicketCounter {
     }
 
     private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat) {
-        if (!this.rangeLegalCheck(departure, arrival)) {
+        if (this.rangeLegalCheck(departure, arrival)) {
             return false;
         }
         for (int d = 1; d < maxStationnum; d++) {
             for (int a = d + 1; a <= maxStationnum; a++) {
-                if (!rangeLegalCheck(d, a)) {
+                if (rangeLegalCheck(d, a)) {
                     continue;
                 }
                 if (d < arrival && a > departure) {
@@ -188,17 +188,15 @@ class LazyRemainTicketCounter extends TrainRemainTicketCounter {
         if (!rangeLegalCheck(departure, arrival)) {
             return 0;
         }
-        //return this.counterBoard[departure-1][arrival-1];
-        int counter = 0;
-        for (int i = 0; i < this.bitmap.getSeatAmount(); i++) {
-            Seat s = this.bitmap.pickSeatAtIndex(i);
-            if (!s.isRangeOccupied(departure, arrival)) {
-                counter++;
-            }
-        }
-        return counter;
-
-
+        return this.counterBoard[departure-1][arrival-1];
+//        int counter = 0;
+//        for (int i = 0; i < this.bitmap.getSeatAmount(); i++) {
+//            Seat s = this.bitmap.pickSeatAtIndex(i);
+//            if (!s.isRangeOccupied(departure, arrival)) {
+//                counter++;
+//            }
+//        }
+//        return counter;
     }
 
     private boolean modifyRange(int departure, int arrival) {

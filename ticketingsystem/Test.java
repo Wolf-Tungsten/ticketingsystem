@@ -29,11 +29,21 @@ public class Test {
         for(int i = 0; i < threadnum; i++){
             t[i].join();
         }
+
         long amountTime = 0;
+        long amountCount = 0;
         for(int i = 0; i < threadnum; i++){
+            System.out.printf(">>>>> 线程 %s <<<<<\n",i);
+            System.out.printf("购票 %s 次，平均操作时间 %s ns\n", t[i].buyCount, t[i].buyTime / t[i].buyCount);
+            System.out.printf("查票 %s 次，平均操作时间 %s ns\n", t[i].inquiryCount, t[i].inquiryTime / t[i].inquiryCount);
+            System.out.printf("退票 %s 次，平均操作时间 %s ns\n", t[i].refundCount, t[i].refundTime / t[i].refundCount);
             amountTime += t[i].amountTime;
+            amountCount += t[i].buyCount;
+            amountCount += t[i].inquiryCount;
+            amountCount += t[i].refundCount;
         }
         System.out.printf("%s 线程，总运行时间 %s ns\n", threadnum, amountTime);
+        System.out.printf("吞吐量 %s ops\n", (double)amountCount / ((double)amountTime / 1000 / 1000 / 1000));
     }
 
     static String passengerName() {
@@ -44,6 +54,15 @@ public class Test {
 
     static class TestThread extends Thread {
         public long amountTime;
+
+        public long buyTime;
+        public long inquiryTime;
+        public long refundTime;
+
+        public long buyCount;
+        public long inquiryCount;
+        public long refundCount;
+
         final long startTime = System.nanoTime();
 
         public void run() {
@@ -52,7 +71,8 @@ public class Test {
             Ticket ticket = new Ticket();
             ArrayList<Ticket> soldTicket = new ArrayList<Ticket>();
             long preTime = 0, postTime = 0;
-            for (int i = 0; i < testnum; i++) {
+            int finishedTest = 0;
+            while (finishedTest < testnum) {
                 int sel = rand.nextInt(inqpc);
                 if (0 <= sel && sel < retpc && soldTicket.size() > 0) { // return ticket
                     int select = rand.nextInt(soldTicket.size());
@@ -60,6 +80,9 @@ public class Test {
                         preTime = System.nanoTime() - startTime;
                         if (tds.refundTicket(ticket)) {
                             postTime = System.nanoTime() - startTime;
+                            refundTime += postTime - preTime;
+                            refundCount++;
+                            finishedTest++;
                             System.out.println(preTime + " " + postTime + " " + ThreadId.get() + " " + "TicketRefund" + " " + ticket.tid + " " + ticket.passenger + " " + ticket.route + " " + ticket.coach + " " + ticket.departure + " " + ticket.arrival + " " + ticket.seat);
                             System.out.flush();
                         } else {
@@ -88,6 +111,9 @@ public class Test {
                         System.out.println(preTime + " " + String.valueOf(System.nanoTime() - startTime) + " " + ThreadId.get() + " " + "TicketSoldOut" + " " + route + " " + departure + " " + arrival);
                         System.out.flush();
                     }
+                    buyTime += postTime - preTime;
+                    buyCount++;
+                    finishedTest++;
                 } else if (buypc <= sel && sel < inqpc) { // inquiry ticket
 
                     int route = rand.nextInt(routenum) + 1;
@@ -101,7 +127,9 @@ public class Test {
                     }
                     System.out.println(preTime + " " + postTime + " " + ThreadId.get() + " " + "RemainTicket" + " " + leftTicket + " " + route + " " + departure + " " + arrival);
                     System.out.flush();
-
+                    inquiryTime += postTime - preTime;
+                    inquiryCount++;
+                    finishedTest++;
                 }
 
                 amountTime += (postTime - preTime);

@@ -45,6 +45,11 @@ class AdaptiveGranularityTrainSeatOccupiedBitmap extends TrainSeatOccupiedBitmap
         super(stationnum, coachnum, seatnum, threadnum);
         this.locknum = this.seatAmount / SEAT_FACTOR + 1;
         this.locks = new ReentrantLock[this.locknum];
+        for(int i=0; i < coachnum; i++){
+            for(int j=0; j < seatnum; j++){
+                allSeats[i * seatnum + j] = new Seat(stationnum);
+            }
+        }
         for(int i=0; i < this.locknum; i++){
             this.locks[i] =  new ReentrantLock();
         }

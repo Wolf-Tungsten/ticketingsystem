@@ -6,13 +6,14 @@ public class TicketingDS implements TicketingSystem {
 	private int routenum;
 	TicketingDS(int routenum, int coachnum, int seatnum, int stationnum, int threadnum){
 		this.routenum = routenum;
-		this.trains = new RangeLockTrainTicketingDS[routenum];
+		this.trains = new TrainTicketingDS[routenum];
 		for(int trainNr = 1; trainNr <= routenum; trainNr++){
 			// 区间锁-懒计数
-			this.trains[trainNr - 1] = new RangeLockTrainTicketingDS(
-					trainNr, coachnum, seatnum, stationnum, threadnum, false);
+			//this.trains[trainNr - 1] = new RangeLockTrainTicketingDS(
+					//trainNr, coachnum, seatnum, stationnum, threadnum, false);
 			//this.trains[trainNr - 1] = new AdptGraLazyTrainTicketingDS(
 					//trainNr, coachnum, seatnum, stationnum, threadnum, false);
+			this.trains[trainNr - 1] = new AdptGraAtomicTrainTicketingDS(trainNr, coachnum, seatnum,stationnum,threadnum);
 		}
 	}
 
