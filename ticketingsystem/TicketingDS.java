@@ -2,28 +2,43 @@ package ticketingsystem;
 
 public class TicketingDS implements TicketingSystem {
 
+	private TrainTicketingDS[] trains;
+	private int routenum;
 	TicketingDS(int routenum, int coachnum, int seatnum, int stationnum, int threadnum){
-
+		this.routenum = routenum;
+		this.trains = new RangeLockTrainTicketingDS[routenum];
+		for(int trainNr = 1; trainNr <= routenum; trainNr++){
+			// 区间锁-懒计数
+			this.trains[trainNr - 1] = new RangeLockTrainTicketingDS(
+					trainNr, coachnum, seatnum, stationnum, threadnum, false);
+			//this.trains[trainNr - 1] = new AdptGraLazyTrainTicketingDS(
+					//trainNr, coachnum, seatnum, stationnum, threadnum, false);
+		}
 	}
-	
+
 	@Override
 	public Ticket buyTicket(String passenger, int route, int departure, int arrival) {
-		// TODO Auto-generated method stub
-		return null;
+		if(route <= 0 || route > this.routenum){
+			return null;
+		}
+		return this.trains[route - 1].buyTicket(passenger, departure, arrival);
 	}
 
 	@Override
 	public int inquiry(int route, int departure, int arrival) {
-		// TODO Auto-generated method stub
-		return 0;
+		if(route <= 0 || route > this.routenum){
+			return 0;
+		}
+		return this.trains[route - 1].inquiry(departure, arrival);
 	}
 
 	@Override
 	public boolean refundTicket(Ticket ticket) {
-		// TODO Auto-generated method stub
-		return false;
+		if(ticket == null || ticket.route <= 0 || ticket.route > this.routenum){
+			return false;
+		}
+		return this.trains[ticket.route - 1].refundTicket(ticket);
 	}
-		
-	//ToDo
+
 
 }
