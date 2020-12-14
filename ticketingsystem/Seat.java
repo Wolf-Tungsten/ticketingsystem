@@ -6,7 +6,7 @@ public class Seat {
 
     protected long occupiedBitmap;
     protected int stationnum;
-    protected int[][] maskMap;
+    static protected int[][] maskMap;
 
     public boolean isRangeOccupied(int departure, int arrival) {
 //        long mask = 0;
