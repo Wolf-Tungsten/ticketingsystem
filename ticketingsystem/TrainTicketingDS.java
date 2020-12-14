@@ -113,6 +113,7 @@ class RangeLockTrainTicketingDS extends TrainTicketingDS {
         int seatIndex = 0;
         RangeLockSeat currentSeat = null;
         boolean success = false;
+        int conflict = 0;
         for (int i = 0; i < this.bitmap.getSeatAmount(); i++) {
             // 当前尝试的座位 index
             seatIndex = (seatStartPoint + i) % this.bitmap.getSeatAmount();
@@ -121,8 +122,10 @@ class RangeLockTrainTicketingDS extends TrainTicketingDS {
             // 检查区间是否可用
             if(currentSeat.isRangeOccupied(departure, arrival)){
                 // 这个座位已经冲突了，看下一个
+                conflict++;
                 continue;
             }
+            //System.out.printf(">>>>CONFLICT:%s<<<<\n",conflict);
             // 开始获取锁
             for (int range = departure - 1; range < arrival - 1; range++) {
                 currentSeat.seatOccupiedLock[range].lock();

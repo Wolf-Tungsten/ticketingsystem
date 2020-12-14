@@ -66,13 +66,37 @@ public class Seat {
 class RangeLockSeat extends Seat {
 
     public ReentrantLock[] seatOccupiedLock;
+    public boolean[] seatOccupiedMap;
 
     RangeLockSeat(int stationnum){
         super(stationnum);
         this.seatOccupiedLock =  new ReentrantLock[stationnum-1];
+        this.seatOccupiedMap = new boolean[stationnum];
         for(int i=0; i < stationnum-1; i++){
             this.seatOccupiedLock[i] = new ReentrantLock(true);
+            this.seatOccupiedMap[i] = false;
         }
     }
 
+    @Override
+    public boolean isRangeOccupied(int departure, int arrival) {
+        for(int i = departure - 1; i < arrival - 1; i++){
+            if(seatOccupiedMap[i]){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void occupyRange(int departure, int arrival) {
+        for(int i = departure - 1; i < arrival - 1; i++){
+            seatOccupiedMap[i] = true;
+        }
+    }
+
+    public void releaseRange(int departure, int arrival){
+        for(int i = departure - 1; i < arrival - 1; i++){
+            seatOccupiedMap[i] = false;
+        }
+    }
 }
