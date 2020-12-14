@@ -7,14 +7,14 @@ import java.util.concurrent.atomic.AtomicLong;
 public class Test {
 
     final static int maxThreadnum = 128;
-    final static int routenum = 5; // route is designed from 1 to 3
-    final static int coachnum = 8; // coach is arranged from 1 to 5
+    final static int routenum = 20; // route is designed from 1 to 3
+    final static int coachnum = 10; // coach is arranged from 1 to 5
     final static int seatnum = 100; // seat is allocated from 1 to 20
-    final static int stationnum = 10; // station is designed from 1 to 5
+    final static int stationnum = 16; // station is designed from 1 to 5
 
-    final static int testnum = 10000;
+    final static int testnum = 100000;
     final static int retpc = 10; // return ticket operation is 10% percent
-    final static int buypc = 40; // buy ticket operation is 30% percent
+    final static int buypc = 30; // buy ticket operation is 30% percent
     final static int inqpc = 100; //inquiry ticket operation is 60% percent
 
     static TicketingDS tds;
