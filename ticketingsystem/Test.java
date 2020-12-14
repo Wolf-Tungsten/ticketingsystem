@@ -33,7 +33,7 @@ public class Test {
         for(int i = 0; i < threadnum; i++){
             amountTime += t[i].amountTime;
         }
-        System.out.printf("总运行时间 %s ns\n", amountTime);
+        System.out.printf("%s 线程，总运行时间 %s ns\n", threadnum, amountTime);
     }
 
     static String passengerName() {
