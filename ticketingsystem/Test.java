@@ -5,7 +5,7 @@ import java.util.Random;
 
 public class Test {
 
-    final static int threadnum = 4;
+    final static int maxThreadnum = 128;
     final static int routenum = 5; // route is designed from 1 to 3
     final static int coachnum = 8; // coach is arranged from 1 to 5
     final static int seatnum = 100; // seat is allocated from 1 to 20
@@ -19,7 +19,20 @@ public class Test {
     static TicketingDS tds;
 
     public static void main(String[] args) throws InterruptedException {
+        System.out.printf("%10s %20s %20s %16s %16s %16s\n",
+                "#Threads",
+                "AmountTime/ms",
+                "kops/s",
+                "buyAvg/ns",
+                "inqAvg/ns",
+                "refundAvg/ns"
+        );
+        for(int i = 0; i < 100; i++){
+            runTestOfNrThread(4);
+        }
+    }
 
+    public static void runTestOfNrThread(int threadnum) throws InterruptedException {
         tds = new TicketingDS(routenum, coachnum, seatnum, stationnum, threadnum);
         TestThread[] t = new TestThread[threadnum];
         for(int i = 0; i < threadnum; i++){
@@ -30,22 +43,34 @@ public class Test {
             t[i].join();
         }
 
-        long amountTime = 0;
+        double amountTime = 0;
         long amountCount = 0;
-        for(int i = 0; i < threadnum; i++){
-            System.out.printf(">>>>> 线程 %s <<<<<\n",i);
-            System.out.printf("购票 %s 次，平均操作时间 %s ns\n", t[i].buyCount, t[i].buyTime / t[i].buyCount);
-            System.out.printf("查票 %s 次，平均操作时间 %s ns\n", t[i].inquiryCount, t[i].inquiryTime / t[i].inquiryCount);
-            System.out.printf("退票 %s 次，平均操作时间 %s ns\n", t[i].refundCount, t[i].refundTime / t[i].refundCount);
-            amountTime += t[i].amountTime;
-            amountCount += t[i].buyCount;
-            amountCount += t[i].inquiryCount;
-            amountCount += t[i].refundCount;
-        }
-        System.out.printf("%s 线程，总运行时间 %s ns\n", threadnum, amountTime);
-        System.out.printf("吞吐量 %s ops\n", (double)amountCount / ((double)amountTime / 1000 / 1000 / 1000));
-    }
 
+        double buyTime=0, inquiryTime=0, refundTime=0;
+        long buyCount=0, inquiryCount=0, refundCount=0;
+
+        for(int i = 0; i < threadnum; i++){
+            buyTime +=  t[i].buyTime;
+            inquiryTime += t[i].inquiryTime;
+            refundTime += t[i].refundTime;
+
+            buyCount += t[i].buyCount;
+            inquiryCount += t[i].inquiryCount;
+            refundCount += t[i].refundCount;
+        }
+
+        amountTime = buyTime + inquiryTime + refundTime;
+        amountCount = buyCount + inquiryCount + refundCount;
+        System.out.printf("%10s %20.3f %20.3f %16.3f %16.3f %16.3f\n",
+                threadnum,
+                amountTime/1000000,
+                (amountCount/(amountTime/1000000000))/1000,
+                buyTime/buyCount,
+                inquiryTime/inquiryCount,
+                refundTime/refundCount
+                );
+
+    }
     static String passengerName() {
         Random rand = new Random();
         long uid = rand.nextInt(testnum);
@@ -83,17 +108,17 @@ public class Test {
                             refundTime += postTime - preTime;
                             refundCount++;
                             finishedTest++;
-                            System.out.println(preTime + " " + postTime + " " + ThreadId.get() + " " + "TicketRefund" + " " + ticket.tid + " " + ticket.passenger + " " + ticket.route + " " + ticket.coach + " " + ticket.departure + " " + ticket.arrival + " " + ticket.seat);
-                            System.out.flush();
+                            //System.out.println(preTime + " " + postTime + " " + ThreadId.get() + " " + "TicketRefund" + " " + ticket.tid + " " + ticket.passenger + " " + ticket.route + " " + ticket.coach + " " + ticket.departure + " " + ticket.arrival + " " + ticket.seat);
+                            //System.out.flush();
                         } else {
                             postTime = System.nanoTime() - startTime;
-                            System.out.println(preTime + " " + String.valueOf(System.nanoTime() - startTime) + " " + ThreadId.get() + " " + "ErrOfRefund");
-                            System.out.flush();
+                            //System.out.println(preTime + " " + String.valueOf(System.nanoTime() - startTime) + " " + ThreadId.get() + " " + "ErrOfRefund");
+                            //System.out.flush();
                         }
                     } else {
                         preTime = System.nanoTime() - startTime;
-                        System.out.println(preTime + " " + String.valueOf(System.nanoTime() - startTime) + " " + ThreadId.get() + " " + "ErrOfRefund");
-                        System.out.flush();
+                        //System.out.println(preTime + " " + String.valueOf(System.nanoTime() - startTime) + " " + ThreadId.get() + " " + "ErrOfRefund");
+                        //System.out.flush();
                     }
                 } else if (retpc <= sel && sel < buypc) { // buy ticket
                     String passenger = passengerName();
@@ -103,13 +128,13 @@ public class Test {
                     preTime = System.nanoTime() - startTime;
                     if ((ticket = tds.buyTicket(passenger, route, departure, arrival)) != null) {
                         postTime = System.nanoTime() - startTime;
-                        System.out.println(preTime + " " + postTime + " " + ThreadId.get() + " " + "TicketBought" + " " + ticket.tid + " " + ticket.passenger + " " + ticket.route + " " + ticket.coach + " " + ticket.departure + " " + ticket.arrival + " " + ticket.seat);
+                        //System.out.println(preTime + " " + postTime + " " + ThreadId.get() + " " + "TicketBought" + " " + ticket.tid + " " + ticket.passenger + " " + ticket.route + " " + ticket.coach + " " + ticket.departure + " " + ticket.arrival + " " + ticket.seat);
                         soldTicket.add(ticket);
-                        System.out.flush();
+                        //System.out.flush();
                     } else {
                         postTime = System.nanoTime() - startTime;
-                        System.out.println(preTime + " " + String.valueOf(System.nanoTime() - startTime) + " " + ThreadId.get() + " " + "TicketSoldOut" + " " + route + " " + departure + " " + arrival);
-                        System.out.flush();
+                        //System.out.println(preTime + " " + String.valueOf(System.nanoTime() - startTime) + " " + ThreadId.get() + " " + "TicketSoldOut" + " " + route + " " + departure + " " + arrival);
+                        //System.out.flush();
                     }
                     buyTime += postTime - preTime;
                     buyCount++;
@@ -122,16 +147,12 @@ public class Test {
                     preTime = System.nanoTime() - startTime;
                     int leftTicket = tds.inquiry(route, departure, arrival);
                     postTime = System.nanoTime() - startTime;
-                    if (leftTicket < 0) {
-                        System.out.println("!!!");
-                    }
-                    System.out.println(preTime + " " + postTime + " " + ThreadId.get() + " " + "RemainTicket" + " " + leftTicket + " " + route + " " + departure + " " + arrival);
-                    System.out.flush();
+                    //System.out.println(preTime + " " + postTime + " " + ThreadId.get() + " " + "RemainTicket" + " " + leftTicket + " " + route + " " + departure + " " + arrival);
+                    //System.out.flush();
                     inquiryTime += postTime - preTime;
                     inquiryCount++;
                     finishedTest++;
                 }
-
                 amountTime += (postTime - preTime);
             }
 
