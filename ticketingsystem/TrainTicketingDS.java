@@ -40,12 +40,14 @@ abstract public class TrainTicketingDS {
     }
 
     abstract public Ticket buyTicket(String passenger, int departure, int arrival);
+
     abstract public int inquiry(int departure, int arrival);
+
     abstract public boolean refundTicket(Ticket ticket);
 
     protected int randomSeatIndex() {
         Random rnd = this.rnd.get();
-        if(rnd == null){
+        if (rnd == null) {
             rnd = new Random();
             this.rnd.set(rnd);
         }
@@ -53,7 +55,7 @@ abstract public class TrainTicketingDS {
     }
 
     protected int getThreadSeatIndex() {
-        return ((int)Thread.currentThread().getId() % threadnum) * seatnumPerThread;
+        return ((int) Thread.currentThread().getId() % threadnum) * seatnumPerThread;
     }
 
     static final class TidComponent {
@@ -68,7 +70,8 @@ abstract public class TrainTicketingDS {
         public static final int TIMESTAMP_BIT = 16;
         public static final int TIMESTAMP_MASK = 0xFFFF;
 
-        private TidComponent() {}
+        private TidComponent() {
+        }
     }
 
     protected long generateTid(Ticket ticketWithoutTid) {
@@ -103,21 +106,21 @@ abstract public class TrainTicketingDS {
         return tid;
     }
 
-    protected boolean isLegalRange(int departure, int arrival){
+    protected boolean isLegalRange(int departure, int arrival) {
         return !(departure < 1 || arrival > this.stationnum || (arrival - departure) <= 0);
     }
 }
 
 class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
 
-    AdptGraAtomicTrainTicketingDS(int trainNr, int coachnum, int seatnum, int stationnum, int threadnum){
+    AdptGraAtomicTrainTicketingDS(int trainNr, int coachnum, int seatnum, int stationnum, int threadnum) {
         super(trainNr, coachnum, seatnum, stationnum, threadnum);
         this.bitmap = new AdaptiveGranularityTrainSeatOccupiedBitmap(stationnum, coachnum, seatnum, threadnum);
-        this.remainCounter = new SeatLevelAtomicRemainTicketCounter(stationnum,  coachnum, seatnum);
+        this.remainCounter = new SeatLevelAtomicRemainTicketCounter(stationnum, coachnum, seatnum);
     }
 
     public Ticket buyTicket(String passenger, int departure, int arrival) {
-        AdaptiveGranularityTrainSeatOccupiedBitmap bitmap = (AdaptiveGranularityTrainSeatOccupiedBitmap)this.bitmap;
+        AdaptiveGranularityTrainSeatOccupiedBitmap bitmap = (AdaptiveGranularityTrainSeatOccupiedBitmap) this.bitmap;
         //System.out.printf("开始购票 列车：%d 乘客：%s，出发：%d，到站：%d \n", this.trainNr, passenger, departure, arrival);
         // 检查区间是否合法
         if (!isLegalRange(departure, arrival)) {
@@ -135,31 +138,28 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
             // 当前尝试的座位实例
             currentSeat = bitmap.pickSeatAtIndex(seatIndex);
             // 检查区间是否可用
-            if(currentSeat.isRangeOccupied(departure, arrival)){
+            if (currentSeat.isRangeOccupied(departure, arrival)) {
                 // 这个座位已经冲突了，看下一个
                 continue;
             }
             // 尝试获取锁，锁定座位所在区间
-            if(bitmap.tryLockSeat(seatIndex)){
-                try {
-                    // 现在没有人会来争抢，再次检查座位是否还空着
-                    if(currentSeat.isRangeOccupied(departure, arrival)){
-                        // 在检查到加锁期间，座位已经被占了，看下一个
-                        continue;
-                    }
-                    // 很好，座位还是空的，赶紧占上
-                    this.remainCounter.buyRange(departure, arrival, currentSeat);
-                    currentSeat.occupyRange(departure, arrival);
-                    // 标记购票成功
-                    success = true;
-                    break;
-                } finally {
-                    // 释放锁
-                    bitmap.unlockSeat(seatIndex);
+            bitmap.lockSeat(seatIndex);
+
+            try {
+                // 现在没有人会来争抢，再次检查座位是否还空着
+                if (currentSeat.isRangeOccupied(departure, arrival)) {
+                    // 在检查到加锁期间，座位已经被占了，看下一个
+                    continue;
                 }
-            } else {
-                // 别的线程持有了锁，直接去找别处
-                continue;
+                // 很好，座位还是空的，赶紧占上
+                this.remainCounter.buyRange(departure, arrival, currentSeat);
+                currentSeat.occupyRange(departure, arrival);
+                // 标记购票成功
+                success = true;
+                break;
+            } finally {
+                // 释放锁
+                bitmap.unlockSeat(seatIndex);
             }
         }
         // 看过所有座位，没有发现可用空座，那么本次购票失败
@@ -186,7 +186,7 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
     }
 
     public boolean refundTicket(Ticket ticket) {
-        AdaptiveGranularityTrainSeatOccupiedBitmap bitmap = (AdaptiveGranularityTrainSeatOccupiedBitmap)this.bitmap;
+        AdaptiveGranularityTrainSeatOccupiedBitmap bitmap = (AdaptiveGranularityTrainSeatOccupiedBitmap) this.bitmap;
         //System.out.printf("开始退票 列车：%d 乘客：%s，出发：%d，到站：%d \n", this.trainNr, ticket.passenger, ticket.departure, ticket.arrival);
         // 检查票的合法性
         if (ticket.coach <= 0 || ticket.coach > this.coachnum) {

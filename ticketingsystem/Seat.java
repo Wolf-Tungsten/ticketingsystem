@@ -1,7 +1,5 @@
 package ticketingsystem;
 
-import java.util.concurrent.locks.ReentrantLock;
-
 public class Seat {
 
     protected long occupiedBitmap;
@@ -9,40 +7,18 @@ public class Seat {
     static protected int[][] maskMap;
 
     public boolean isRangeOccupied(int departure, int arrival) {
-//        long mask = 0;
-//        for (int i = 0; i < stationnum; i++) {
-//            if (i >= departure - 1 && i < arrival - 1) {
-//                mask += 1;
-//            }
-//            mask = mask << 1;
-//        }
         return ((this.maskMap[departure][arrival] & this.occupiedBitmap)  != 0);
     }
 
     public void occupyRange(int departure, int arrival) {
-//        long mask = 0;
-//        for (int i = 0; i < stationnum; i++) {
-//            if (i >= departure - 1 && i < arrival - 1) {
-//                mask += 1;
-//            }
-//            mask = mask << 1;
-//        }
         this.occupiedBitmap |= this.maskMap[departure][arrival];
     }
 
     public void releaseRange(int departure, int arrival){
-//        long mask = 0;
-//        for (int i = 0; i < stationnum; i++) {
-//            mask += 1;
-//            if (i >= departure - 1 && i < arrival - 1) {
-//                mask -= 1;
-//            }
-//            mask = mask << 1;
-//        }
         this.occupiedBitmap &= ~this.maskMap[departure][arrival];
     }
 
-    protected Seat(int stationnum) {
+    Seat(int stationnum) {
         this.occupiedBitmap = 0;
         this.stationnum = stationnum;
         // 把 maskMap 预先生成
@@ -58,45 +34,6 @@ public class Seat {
                 }
                 maskMap[departure][arrival] = mask;
             }
-        }
-    }
-
-}
-
-class RangeLockSeat extends Seat {
-
-    public ReentrantLock[] seatOccupiedLock;
-    public boolean[] seatOccupiedMap;
-
-    RangeLockSeat(int stationnum){
-        super(stationnum);
-        this.seatOccupiedLock =  new ReentrantLock[stationnum-1];
-        this.seatOccupiedMap = new boolean[stationnum];
-        for(int i=0; i < stationnum-1; i++){
-            this.seatOccupiedLock[i] = new ReentrantLock(true);
-            this.seatOccupiedMap[i] = false;
-        }
-    }
-
-    @Override
-    public boolean isRangeOccupied(int departure, int arrival) {
-        for(int i = departure - 1; i < arrival - 1; i++){
-            if(seatOccupiedMap[i]){
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public void occupyRange(int departure, int arrival) {
-        for(int i = departure - 1; i < arrival - 1; i++){
-            seatOccupiedMap[i] = true;
-        }
-    }
-
-    public void releaseRange(int departure, int arrival){
-        for(int i = departure - 1; i < arrival - 1; i++){
-            seatOccupiedMap[i] = false;
         }
     }
 }

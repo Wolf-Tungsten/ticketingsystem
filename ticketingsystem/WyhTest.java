@@ -76,8 +76,8 @@ class Tester {
                     ArrayList<Ticket> soldTicket = new ArrayList<Ticket>();
 
                     for (int i = 0; i < testNum; i++) {
-                        int sel = rand.nextInt(Test.inqpc);
-                        if (0 <= sel && sel < Test.retpc && soldTicket.size() > 0) { // return ticket
+                        int sel = rand.nextInt(WyhTest.inqpc);
+                        if (0 <= sel && sel < WyhTest.retpc && soldTicket.size() > 0) { // return ticket
                             int select = rand.nextInt(soldTicket.size());
                             if ((ticket = soldTicket.remove(select)) != null) {
 
@@ -87,7 +87,7 @@ class Tester {
                                 methodCallCounter[0].incrementAndGet();
 
                             }
-                        } else if (Test.retpc <= sel && sel < Test.buypc) { // buy ticket
+                        } else if (WyhTest.retpc <= sel && sel < WyhTest.buypc) { // buy ticket
                             String passenger = passengerName();
                             int route = rand.nextInt(routeNum) + 1;
                             int departure = rand.nextInt(stationNum - 1) + 1;
@@ -102,7 +102,7 @@ class Tester {
                                 soldTicket.add(ticket);
                             }
 
-                        } else if (Test.buypc <= sel && sel < Test.inqpc) { // inquiry ticket
+                        } else if (WyhTest.buypc <= sel && sel < WyhTest.inqpc) { // inquiry ticket
 
                             int route = rand.nextInt(routeNum) + 1;
                             int departure = rand.nextInt(stationNum - 1) + 1;

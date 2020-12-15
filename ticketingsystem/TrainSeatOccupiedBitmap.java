@@ -24,17 +24,6 @@ public class TrainSeatOccupiedBitmap {
     }
 }
 
-class RangeLockTrainSeatOccupiedBitmap extends TrainSeatOccupiedBitmap {
-    RangeLockTrainSeatOccupiedBitmap(int stationnum, int coachnum, int seatnum, int threadnum){
-        super(stationnum, coachnum, seatnum, threadnum);
-        for(int i=0; i < coachnum; i++){
-            for(int j=0; j < seatnum; j++){
-                allSeats[i * seatnum + j] = new RangeLockSeat(stationnum);
-            }
-        }
-    }
-}
-
 // 根据线程数自动调节的
 class AdaptiveGranularityTrainSeatOccupiedBitmap extends TrainSeatOccupiedBitmap {
 
