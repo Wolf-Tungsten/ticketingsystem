@@ -243,8 +243,11 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
                 // 这个座位已经冲突了，看下一个
                 continue;
             }
-            // 锁定座位所在区间
-            bitmap.lockSeat(seatIndex);
+            // 尝试获取锁，锁定座位所在区间
+            if(!bitmap.lockSeat(seatIndex)){
+                // 别的线程持有了锁，直接去找别处
+                continue;
+            }
             // 成功获取锁
             try {
                 // 现在没有人会来争抢，再次检查座位是否还空着

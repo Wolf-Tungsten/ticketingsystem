@@ -38,7 +38,7 @@ class RangeLockTrainSeatOccupiedBitmap extends TrainSeatOccupiedBitmap {
 // 根据线程数自动调节的
 class AdaptiveGranularityTrainSeatOccupiedBitmap extends TrainSeatOccupiedBitmap {
 
-    private final int SEAT_FACTOR = 1; // 多少个座位共用一把锁
+    private final int SEAT_FACTOR = 10; // 多少个座位共用一把锁
     private int locknum;
     private ReentrantLock[] locks;
     AdaptiveGranularityTrainSeatOccupiedBitmap(int stationnum, int coachnum, int seatnum, int threadnum){
@@ -56,14 +56,17 @@ class AdaptiveGranularityTrainSeatOccupiedBitmap extends TrainSeatOccupiedBitmap
     }
 
     private ReentrantLock getLockOfSeat(int seatIndex){
-        return this.locks[seatIndex];
+        return this.locks[seatIndex / this.SEAT_FACTOR];
     }
 
-    public void lockSeat(int seatIndex){
+    public boolean lockSeat(int seatIndex){
        if(this.getLockOfSeat(seatIndex).isHeldByCurrentThread()){
-           return;
+           return true;
+       } else if (this.getLockOfSeat(seatIndex).isLocked()) {
+           return false;
        } else {
            this.getLockOfSeat(seatIndex).lock();
+           return true;
        }
     }
 
