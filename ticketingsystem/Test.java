@@ -32,6 +32,7 @@ public class Test {
                 runTestOfNrThread((int)Math.pow(2, i));
             }
         }
+        //runTestOfNrThread(4);
     }
 
     public static void runTestOfNrThread(int threadnum) throws InterruptedException {

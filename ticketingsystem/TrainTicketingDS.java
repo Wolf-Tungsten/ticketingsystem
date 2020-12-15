@@ -3,6 +3,7 @@ package ticketingsystem;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * 针对指定列车的计票数据结构
@@ -233,7 +234,6 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
         int seatIndex = 0;
         Seat currentSeat = null;
         boolean success = false;
-        boolean holdLock = false;
         for (int i = 0; i < bitmap.getSeatAmount(); i++) {
             // 当前尝试的座位 index
             seatIndex = (seatStartPoint + i) % bitmap.getSeatAmount();
@@ -245,28 +245,32 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
                 continue;
             }
             // 尝试获取锁，锁定座位所在区间
-            if(holdLock = !bitmap.lockSeat(seatIndex)){
-                // 别的线程持有了锁，直接去找别处
-                continue;
-            }
-            // 成功获取锁
-            try {
-                // 现在没有人会来争抢，再次检查座位是否还空着
-                if(currentSeat.isRangeOccupied(departure, arrival)){
-                    // 在检查到加锁期间，座位已经被占了，看下一个
-                    continue;
-                }
-                // 很好，座位还是空的，赶紧占上
-                this.remainCounter.buyRange(departure, arrival, currentSeat);
-                currentSeat.occupyRange(departure, arrival);
-                // 标记购票成功
-                success = true;
-                break;
-            } finally {
-                // 释放锁
-                if(holdLock) {
+            if(bitmap.tryLockSeat(seatIndex)){
+                try {
+                    // 现在没有人会来争抢，再次检查座位是否还空着
+                    if(currentSeat.isRangeOccupied(departure, arrival)){
+                        // 在检查到加锁期间，座位已经被占了，看下一个
+                        continue;
+                    }
+                    // 很好，座位还是空的，赶紧占上
+                    this.remainCounter.buyRange(departure, arrival, currentSeat);
+                    currentSeat.occupyRange(departure, arrival);
+                    // 标记购票成功
+                    success = true;
+                    break;
+                } finally {
+                    // 释放锁
                     bitmap.unlockSeat(seatIndex);
                 }
+            } else {
+//                System.out.printf("锁冲突，线程 %s，尝试列车 %s 座位 %s 时，等待队列 %s \n",
+//                        Thread.currentThread().getId(),
+//                        this.trainNr,
+//                        seatIndex,
+//                        bitmap.getLockOfSeat(seatIndex).isLocked()
+//                );
+                // 别的线程持有了锁，直接去找别处
+                continue;
             }
         }
         // 看过所有座位，没有发现可用空座，那么本次购票失败
