@@ -244,7 +244,7 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
         }
         // 随机获取一个座位开始尝试占座
         // int seatStartPoint = this.randomSeatIndex();
-        int seatStartPoint = this.getThreadSeatIndex() + (this.randomSeatIndex() % this.seatnumPerThread);
+        int seatStartPoint = this.randomSeatIndex();
         int seatIndex = 0;
         Seat currentSeat = null;
         boolean success = false;
