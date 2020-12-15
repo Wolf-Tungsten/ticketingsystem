@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class Test {
 
-    final static int maxThreadnum = 256;
+    final static int maxThreadnum = 512;
     final static int routenum = 20; // route is designed from 1 to 3
     final static int coachnum = 10; // coach is arranged from 1 to 5
     final static int seatnum = 100; // seat is allocated from 1 to 20
@@ -27,7 +27,7 @@ public class Test {
                 "InqTimeAvg/ns",
                 "RefundTimeAvg/ns"
         );
-        for(int i = 4; i <= maxThreadnum; i = i << 2){
+        for(int i = 4; i <= maxThreadnum; i = i << 1){
             for(int j=0; j < 4; j++){
                 runTestOfNrThread(i);
             }
