@@ -47,7 +47,7 @@ class SeatLevelAtomicRemainTicketCounter extends TrainRemainTicketCounter {
             // 区间不合法直接返回0
             return 0;
         }
-        return this.counterboard[rangeToIndex(departure, arrival)].get();
+        return this.counterboard[rangeToIndex(departure, arrival)].getPlain();
     }
 
     private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat) {
