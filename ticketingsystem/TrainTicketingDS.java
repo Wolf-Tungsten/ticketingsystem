@@ -277,12 +277,6 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
                     bitmap.unlockSeat(seatIndex);
                 }
             } else {
-//                System.out.printf("锁冲突，线程 %s，尝试列车 %s 座位 %s 时，等待队列 %s \n",
-//                        Thread.currentThread().getId(),
-//                        this.trainNr,
-//                        seatIndex,
-//                        bitmap.getLockOfSeat(seatIndex).isLocked()
-//                );
                 // 别的线程持有了锁，直接去找别处
                 continue;
             }

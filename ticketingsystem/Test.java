@@ -27,8 +27,8 @@ public class Test {
                 "InqTimeAvg/ns",
                 "RefundTimeAvg/ns"
         );
-        for(int i = 4; i <= maxThreadnum; i = i << 1){
-            for(int j=0; j < 4; j++){
+        for(int i = 64; i <= 128; i = i << 1){
+            for(int j=0; j < 8; j++){
                 runTestOfNrThread(i);
             }
         }
