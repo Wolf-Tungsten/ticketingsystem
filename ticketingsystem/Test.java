@@ -21,15 +21,16 @@ public class Test {
     public static void main(String[] args) throws InterruptedException {
         System.out.printf("%10s %20s %20s %16s %16s %16s\n",
                 "#Threads",
-                "AmountTime/ms",
+                "AmountTimeAvg/ms",
                 "kops/s",
-                "buyAvg/ns",
-                "inqAvg/ns",
-                "refundAvg/ns"
+                "BuyTimeAvg/ns",
+                "InqTimeAvg/ns",
+                "RefundTimeAvg/ns"
         );
-        for(int i = 0; i < 1; i++){
-            //runAtomicTestOfNrThread(4);
-            runTestOfNrThread(16);
+        for(int i = 2; i <= 7; i++){
+            for(int j=0; j < 4; j++){
+                runTestOfNrThread((int)Math.pow(2, i));
+            }
         }
     }
 
