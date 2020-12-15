@@ -233,6 +233,7 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
         int seatIndex = 0;
         Seat currentSeat = null;
         boolean success = false;
+        boolean holdLock = false;
         for (int i = 0; i < bitmap.getSeatAmount(); i++) {
             // 当前尝试的座位 index
             seatIndex = (seatStartPoint + i) % bitmap.getSeatAmount();
@@ -244,7 +245,7 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
                 continue;
             }
             // 尝试获取锁，锁定座位所在区间
-            if(!bitmap.lockSeat(seatIndex)){
+            if(holdLock = !bitmap.lockSeat(seatIndex)){
                 // 别的线程持有了锁，直接去找别处
                 continue;
             }
@@ -263,7 +264,9 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
                 break;
             } finally {
                 // 释放锁
-                bitmap.unlockSeat(seatIndex);
+                if(holdLock) {
+                    bitmap.unlockSeat(seatIndex);
+                }
             }
         }
         // 看过所有座位，没有发现可用空座，那么本次购票失败

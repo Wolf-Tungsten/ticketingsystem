@@ -64,11 +64,7 @@ class AdaptiveGranularityTrainSeatOccupiedBitmap extends TrainSeatOccupiedBitmap
     }
 
     public void unlockSeat(int seatIndex){
-        if(this.getLockOfSeat(seatIndex).isHeldByCurrentThread()){
-            this.getLockOfSeat(seatIndex).unlock();
-        } else {
-            return;
-        }
+        this.getLockOfSeat(seatIndex).unlock();
     }
 
 }
