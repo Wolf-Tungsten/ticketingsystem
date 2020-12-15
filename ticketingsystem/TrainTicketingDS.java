@@ -295,7 +295,7 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
         ticket.arrival = arrival;
         ticket.tid = this.generateTid(ticket);
         // 使用并发hash记录票出售的情况（用于退票验证）
-        this.coachTicketRecord.get(ticket.coach - 1).put(ticket.tid, ticket);
+        // this.coachTicketRecord.get(ticket.coach - 1).put(ticket.tid, ticket);
         //System.out.printf("成功购票<%s> 列车：%d 乘客：%s，出发：%d，到站：%d \n", ticket.tid, this.trainNr, passenger, departure, arrival);
         return ticket;
     }
@@ -312,10 +312,11 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
             // 防止 coach 越界
             return false;
         }
-        Ticket ticketRecord = this.coachTicketRecord.get(ticket.coach - 1).get(ticket.tid);
-        if (ticketRecord == null || ticketRecord == firedTicket || !ticketRecord.equals(ticket)) {
-            return false;
-        }
+        Ticket ticketRecord = ticket;
+//        Ticket ticketRecord = this.coachTicketRecord.get(ticket.coach - 1).get(ticket.tid);
+//        if (ticketRecord == null || ticketRecord == firedTicket || !ticketRecord.equals(ticket)) {
+//            return false;
+//        }
         // 运行到此处，票面是合法的，确实存在这样的一张票
         // coach 和 seat 都是加了1的一定要小心！
         int seatIndex = (ticketRecord.coach - 1) * seatnumPerCoach + ticketRecord.seat - 1;
