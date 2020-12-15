@@ -56,7 +56,7 @@ class AdaptiveGranularityTrainSeatOccupiedBitmap extends TrainSeatOccupiedBitmap
     }
 
     private ReentrantLock getLockOfSeat(int seatIndex){
-        return this.locks[seatIndex / SEAT_FACTOR];
+        return this.locks[seatIndex];
     }
 
     public void lockSeat(int seatIndex){
