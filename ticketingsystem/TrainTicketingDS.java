@@ -10,7 +10,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 abstract public class TrainTicketingDS {
 
-    protected ArrayList<ConcurrentHashMap<Long, Ticket>> coachTicketRecord;
+    protected ArrayList<ArrayList<ConcurrentHashMap<Long, Ticket>>> coachTicketRecord;
     protected TrainRemainTicketCounter remainCounter;
     protected TrainSeatOccupiedBitmap bitmap;
     protected int trainNr;
@@ -33,7 +33,10 @@ abstract public class TrainTicketingDS {
         // 模拟每节车厢列车员的换票本
         this.coachTicketRecord = new ArrayList<>(coachnum);
         for (int i = 0; i < coachnum; i++) {
-            this.coachTicketRecord.add(new ConcurrentHashMap<>());
+            this.coachTicketRecord.add(new ArrayList<>());
+            for(int j = 0; j < seatnum; j++) {
+                this.coachTicketRecord.get(i).add(new ConcurrentHashMap<>());
+            }
         }
         this.firedTicket.tid = -1;
         this.rnd = new ThreadLocal<>();
@@ -98,7 +101,7 @@ abstract public class TrainTicketingDS {
             // 再加个随机数
             // tid += this.rnd.get().nextInt() & TidComponent.TIMESTAMP_MASK;
 
-            if (!this.coachTicketRecord.get(ticketWithoutTid.coach - 1).containsKey(tid)) {
+            if (!this.coachTicketRecord.get(ticketWithoutTid.coach - 1).get(ticketWithoutTid.seat - 1).containsKey(tid)) {
                 // 确认是否冲突
                 break;
             }
@@ -176,7 +179,7 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
         ticket.arrival = arrival;
         ticket.tid = this.generateTid(ticket);
         // 使用并发hash记录票出售的情况（用于退票验证）
-        this.coachTicketRecord.get(ticket.coach - 1).put(ticket.tid, ticket);
+        this.coachTicketRecord.get(ticket.coach - 1).get(ticket.seat - 1).put(ticket.tid, ticket);
         //System.out.printf("成功购票<%s> 列车：%d 乘客：%s，出发：%d，到站：%d \n", ticket.tid, this.trainNr, passenger, departure, arrival);
         return ticket;
     }
@@ -193,7 +196,7 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
             // 防止 coach 越界
             return false;
         }
-        Ticket ticketRecord = this.coachTicketRecord.get(ticket.coach - 1).get(ticket.tid);
+        Ticket ticketRecord = this.coachTicketRecord.get(ticket.coach - 1).get(ticket.seat - 1).get(ticket.tid);
         if (ticketRecord == null || ticketRecord == firedTicket || !ticketRecord.equals(ticket)) {
             return false;
         }
@@ -210,7 +213,7 @@ class AdptGraAtomicTrainTicketingDS extends TrainTicketingDS {
             bitmap.unlockSeat(seatIndex);
         }
         // 将记录置为空，防止tid重复
-        this.coachTicketRecord.get(ticket.coach - 1).replace(ticketRecord.tid, firedTicket);
+        this.coachTicketRecord.get(ticket.coach - 1).get(ticket.seat - 1).replace(ticketRecord.tid, firedTicket);
         //System.out.printf("成功退票<%s> 列车：%d 乘客：%s，出发：%d，到站：%d \n", ticket.tid, this.trainNr, ticket.passenger, ticket.departure, ticket.arrival);
         return true;
     }
@@ -282,7 +285,7 @@ class AdptGraLongAdderTrainTicketingDS extends TrainTicketingDS {
         ticket.arrival = arrival;
         ticket.tid = this.generateTid(ticket);
         // 使用并发hash记录票出售的情况（用于退票验证）
-        this.coachTicketRecord.get(ticket.coach - 1).put(ticket.tid, ticket);
+        this.coachTicketRecord.get(ticket.coach - 1).get(ticket.seat - 1).put(ticket.tid, ticket);
         //System.out.printf("成功购票<%s> 列车：%d 乘客：%s，出发：%d，到站：%d \n", ticket.tid, this.trainNr, passenger, departure, arrival);
         return ticket;
     }
@@ -299,7 +302,7 @@ class AdptGraLongAdderTrainTicketingDS extends TrainTicketingDS {
             // 防止 coach 越界
             return false;
         }
-        Ticket ticketRecord = this.coachTicketRecord.get(ticket.coach - 1).get(ticket.tid);
+        Ticket ticketRecord = this.coachTicketRecord.get(ticket.coach - 1).get(ticket.seat - 1).get(ticket.tid);
         if (ticketRecord == null || ticketRecord == firedTicket || !ticketRecord.equals(ticket)) {
             return false;
         }
@@ -316,7 +319,7 @@ class AdptGraLongAdderTrainTicketingDS extends TrainTicketingDS {
             bitmap.unlockSeat(seatIndex);
         }
         // 将记录置为空，防止tid重复
-        this.coachTicketRecord.get(ticket.coach - 1).replace(ticketRecord.tid, firedTicket);
+        this.coachTicketRecord.get(ticket.coach - 1).get(ticket.seat - 1).replace(ticketRecord.tid, firedTicket);
         //System.out.printf("成功退票<%s> 列车：%d 乘客：%s，出发：%d，到站：%d \n", ticket.tid, this.trainNr, ticket.passenger, ticket.departure, ticket.arrival);
         return true;
     }
@@ -387,7 +390,7 @@ class AdptGraReadWriteTrainTicketingDS extends TrainTicketingDS {
         ticket.arrival = arrival;
         ticket.tid = this.generateTid(ticket);
         // 使用并发hash记录票出售的情况（用于退票验证）
-        this.coachTicketRecord.get(ticket.coach - 1).put(ticket.tid, ticket);
+        this.coachTicketRecord.get(ticket.coach - 1).get(ticket.seat - 1).put(ticket.tid, ticket);
         //System.out.printf("成功购票<%s> 列车：%d 乘客：%s，出发：%d，到站：%d \n", ticket.tid, this.trainNr, passenger, departure, arrival);
         return ticket;
     }
@@ -404,7 +407,7 @@ class AdptGraReadWriteTrainTicketingDS extends TrainTicketingDS {
             // 防止 coach 越界
             return false;
         }
-        Ticket ticketRecord = this.coachTicketRecord.get(ticket.coach - 1).get(ticket.tid);
+        Ticket ticketRecord = this.coachTicketRecord.get(ticket.coach - 1).get(ticket.seat - 1).get(ticket.tid);
         if (ticketRecord == null || ticketRecord == firedTicket || !ticketRecord.equals(ticket)) {
             return false;
         }
@@ -421,7 +424,7 @@ class AdptGraReadWriteTrainTicketingDS extends TrainTicketingDS {
             bitmap.unlockSeat(seatIndex);
         }
         // 将记录置为空，防止tid重复
-        this.coachTicketRecord.get(ticket.coach - 1).replace(ticketRecord.tid, firedTicket);
+        this.coachTicketRecord.get(ticket.coach - 1).get(ticket.seat - 1).replace(ticketRecord.tid, firedTicket);
         //System.out.printf("成功退票<%s> 列车：%d 乘客：%s，出发：%d，到站：%d \n", ticket.tid, this.trainNr, ticket.passenger, ticket.departure, ticket.arrival);
         return true;
     }
@@ -492,7 +495,7 @@ class AdptGraFCTrainTicketingDS extends TrainTicketingDS {
         ticket.arrival = arrival;
         ticket.tid = this.generateTid(ticket);
         // 使用并发hash记录票出售的情况（用于退票验证）
-        this.coachTicketRecord.get(ticket.coach - 1).put(ticket.tid, ticket);
+        this.coachTicketRecord.get(ticket.coach - 1).get(ticket.seat - 1).put(ticket.tid, ticket);
         //System.out.printf("成功购票<%s> 列车：%d 乘客：%s，出发：%d，到站：%d \n", ticket.tid, this.trainNr, passenger, departure, arrival);
         return ticket;
     }
@@ -509,7 +512,7 @@ class AdptGraFCTrainTicketingDS extends TrainTicketingDS {
             // 防止 coach 越界
             return false;
         }
-        Ticket ticketRecord = this.coachTicketRecord.get(ticket.coach - 1).get(ticket.tid);
+        Ticket ticketRecord = this.coachTicketRecord.get(ticket.coach - 1).get(ticket.seat - 1).get(ticket.tid);
         if (ticketRecord == null || ticketRecord == firedTicket || !ticketRecord.equals(ticket)) {
             return false;
         }
@@ -526,7 +529,7 @@ class AdptGraFCTrainTicketingDS extends TrainTicketingDS {
             bitmap.unlockSeat(seatIndex);
         }
         // 将记录置为空，防止tid重复
-        this.coachTicketRecord.get(ticket.coach - 1).replace(ticketRecord.tid, firedTicket);
+        this.coachTicketRecord.get(ticket.coach - 1).get(ticket.seat - 1).replace(ticketRecord.tid, firedTicket);
         //System.out.printf("成功退票<%s> 列车：%d 乘客：%s，出发：%d，到站：%d \n", ticket.tid, this.trainNr, ticket.passenger, ticket.departure, ticket.arrival);
         return true;
     }
