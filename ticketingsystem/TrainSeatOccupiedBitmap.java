@@ -27,7 +27,7 @@ public class TrainSeatOccupiedBitmap {
 // 根据线程数自动调节的
 class AdaptiveGranularityTrainSeatOccupiedBitmap extends TrainSeatOccupiedBitmap {
 
-    private final int SEAT_FACTOR = 10; // 多少个座位共用一把锁
+    private final int SEAT_FACTOR = 1; // 多少个座位共用一把锁
     private int locknum;
     private ReentrantLock[] locks;
     AdaptiveGranularityTrainSeatOccupiedBitmap(int stationnum, int coachnum, int seatnum, int threadnum){
