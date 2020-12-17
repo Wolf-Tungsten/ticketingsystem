@@ -2,6 +2,7 @@ package ticketingsystem;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 // 每趟列车的余票计数器
 public abstract class TrainRemainTicketCounter {
@@ -130,6 +131,80 @@ class SeatLevelLongAdderRemainTicketCounter extends TrainRemainTicketCounter {
                     }
                 }
             }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean buyRange(int departure, int arrival, Seat seat) {
+        return this.modifyRange(departure, arrival, true, seat);
+    }
+
+    @Override
+    public boolean refundRange(int departure, int arrival, Seat seat) {
+        return this.modifyRange(departure, arrival, false, seat);
+    }
+}
+
+class SeatLevelReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
+    private int[] counterboard;
+    private int maxStationnum;
+    private ReentrantReadWriteLock lock;
+
+    SeatLevelReadWriteRemainTicketCounter(int stationnum, int coachnum, int seatnum) {
+        this.maxStationnum = stationnum;
+        int rangeCount = stationnum * stationnum; // 这里浪费了一半内存
+        this.counterboard = new int[rangeCount];
+        this.lock = new ReentrantReadWriteLock(true);
+        for (int i = 0; i < rangeCount; i++) {
+            this.counterboard[i] = coachnum * seatnum;
+        }
+    }
+
+    private int rangeToIndex(int departure, int arrival) {
+        return (departure - 1) * maxStationnum + (arrival - 1);
+    }
+
+    @Override
+    public int inquiryRemainTicket(int departure, int arrival) {
+        if (this.rangeLegalCheck(departure, arrival)) {
+            // 区间不合法直接返回0
+            return 0;
+        }
+        this.lock.readLock().lock();
+        try{
+            return this.counterboard[rangeToIndex(departure, arrival)];
+        } finally {
+            this.lock.readLock().unlock();
+        }
+
+    }
+
+    private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat) {
+        if (this.rangeLegalCheck(departure, arrival)) {
+            return false;
+        }
+        this.lock.writeLock().lock();
+        try {
+            for (int d = 1; d < maxStationnum; d++) {
+                for (int a = d + 1; a <= maxStationnum; a++) {
+                    if (rangeLegalCheck(d, a)) {
+                        continue;
+                    }
+                    if (d < arrival && a > departure) {
+                        if (seat.isRangeOccupied(d, a)) {
+                            continue; // 之前已经记录过了，不需要再修改
+                        }
+                        if (isBuy) {
+                            this.counterboard[rangeToIndex(d, a)]--;
+                        } else {
+                            this.counterboard[rangeToIndex(d, a)]++;
+                        }
+                    }
+                }
+            }
+        } finally {
+            this.lock.writeLock().unlock();
         }
         return true;
     }
