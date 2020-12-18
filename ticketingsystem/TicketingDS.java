@@ -13,7 +13,7 @@ public class TicketingDS implements TicketingSystem {
 					//trainNr, coachnum, seatnum, stationnum, threadnum, false);
 			//this.trains[trainNr - 1] = new AdptGraLazyTrainTicketingDS(
 					//trainNr, coachnum, seatnum, stationnum, threadnum, false);
-			this.trains[trainNr - 1] = new AdptGraFCTrainTicketingDS(trainNr, coachnum, seatnum,stationnum,threadnum);
+			this.trains[trainNr - 1] = new AdptGraFCReadWriteTrainTicketingDS(trainNr, coachnum, seatnum,stationnum,threadnum);
 		}
 	}
 

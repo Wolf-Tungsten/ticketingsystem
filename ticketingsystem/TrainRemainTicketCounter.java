@@ -312,3 +312,107 @@ class SeatLevelFCRemainTicketCounter extends TrainRemainTicketCounter {
         return this.modifyRange(departure, arrival, false, seat);
     }
 }
+
+class SeatLevelFCReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
+    private int[][] counterboard;
+    private StampedLock[] threadLock;
+    private int maxStationnum;
+    private StampedLock lock;
+    private int amountTicket;
+    private int threadnum;
+
+    SeatLevelFCReadWriteRemainTicketCounter(int stationnum, int coachnum, int seatnum, int threadnum) {
+        this.maxStationnum = stationnum;
+        this.threadnum = threadnum;
+        int rangeCount = stationnum * stationnum; // 这里浪费了一半内存
+        this.amountTicket = coachnum * seatnum;
+        this.threadLock = new StampedLock[threadnum];
+        this.counterboard = new int[threadnum][rangeCount];
+        this.lock = new StampedLock();
+        for (int i = 0; i < threadnum; i++) {
+            this.threadLock[i] = new StampedLock();
+            for(int j = 0; j < rangeCount; j++) {
+                this.counterboard[i][j] = 0;
+            }
+        }
+    }
+
+    private int rangeToIndex(int departure, int arrival) {
+        return (departure - 1) * maxStationnum + (arrival - 1);
+    }
+
+    @Override
+    public int inquiryRemainTicket(int departure, int arrival) {
+        if (this.rangeLegalCheck(departure, arrival)) {
+            // 区间不合法直接返回0
+            return 0;
+        }
+        int delta = 0;
+        long optimiseStamp;
+        int optimiseSuccess=0;
+        // 先进行乐观读
+        for(int i=0; i < this.threadnum; i++){
+            optimiseStamp = this.threadLock[i].tryOptimisticRead();
+            delta += this.counterboard[i][rangeToIndex(departure, arrival)];
+            if(this.threadLock[i].validate(optimiseStamp)){
+                optimiseSuccess++;
+            } else {
+                break;
+            }
+        }
+        if(optimiseSuccess == this.threadnum){
+            // 乐观读成功
+            return this.amountTicket + delta;
+        }
+        // 乐观读不成功
+        long stamp[] = new long[this.threadnum];
+        for(int i=0; i < this.threadnum; i++){
+            stamp[i] = this.threadLock[i].readLock();
+        }
+        for(int i=0; i< this.threadnum; i++){
+            delta += this.counterboard[i][rangeToIndex(departure, arrival)];
+            this.threadLock[i].unlockRead(stamp[i]);
+        }
+        return this.amountTicket + delta;
+    }
+
+    private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat) {
+        if (this.rangeLegalCheck(departure, arrival)) {
+            return false;
+        }
+        int threadNr = MyThreadId.get() % this.threadnum;
+        long stamp = this.threadLock[threadNr].writeLock();
+        try {
+            for (int d = 1; d < maxStationnum; d++) {
+                for (int a = d + 1; a <= maxStationnum; a++) {
+                    if (rangeLegalCheck(d, a)) {
+                        continue;
+                    }
+                    if (d < arrival && a > departure) {
+                        if (seat.isRangeOccupied(d, a)) {
+                            continue; // 之前已经记录过了，不需要再修改
+                        }
+                        if (isBuy) {
+                            this.counterboard[threadNr][rangeToIndex(d, a)]--;
+                        } else {
+                            this.counterboard[threadNr][rangeToIndex(d, a)]++;
+                        }
+                    }
+                }
+            }
+            return true;
+        } finally {
+            this.threadLock[threadNr].unlockWrite(stamp);
+        }
+    }
+
+    @Override
+    public boolean buyRange(int departure, int arrival, Seat seat) {
+        return this.modifyRange(departure, arrival, true, seat);
+    }
+
+    @Override
+    public boolean refundRange(int departure, int arrival, Seat seat) {
+        return this.modifyRange(departure, arrival, false, seat);
+    }
+}
