@@ -1,10 +1,8 @@
 package ticketingsystem;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.atomic.*;
 import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.StampedLock;
 
@@ -314,24 +312,110 @@ class SeatLevelFCRemainTicketCounter extends TrainRemainTicketCounter {
     }
 }
 
-class SeatLevelFCReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
-    private int[][] counterboard;
-    private ReadWriteLock[] threadLock;
+class AtomicStampedRemainTicketCounter extends TrainRemainTicketCounter {
+    private AtomicStampedReference<int[]> counterboard;
+    private ReentrantLock aBigLock;
     private int maxStationnum;
-    private StampedLock lock;
     private int amountTicket;
     private int threadnum;
 
-    SeatLevelFCReadWriteRemainTicketCounter(int stationnum, int coachnum, int seatnum, int threadnum) {
+    AtomicStampedRemainTicketCounter(int stationnum, int coachnum, int seatnum, int threadnum) {
         this.maxStationnum = stationnum;
         this.threadnum = threadnum;
         int rangeCount = stationnum * stationnum; // 这里浪费了一半内存
         this.amountTicket = coachnum * seatnum;
-        this.threadLock = new ReadWriteLock[threadnum];
+        this.aBigLock = new ReentrantLock();
+        int[] innerCounterboard = new int[stationnum * stationnum];
+        for (int i = 0; i < stationnum * stationnum; i++) {
+            innerCounterboard[i] = 0;
+        }
+        this.counterboard.set(innerCounterboard, 0);
+    }
+
+    private int rangeToIndex(int departure, int arrival) {
+        return (departure - 1) * maxStationnum + (arrival - 1);
+    }
+
+    @Override
+    public int inquiryRemainTicket(int departure, int arrival) {
+        if (this.rangeLegalCheck(departure, arrival)) {
+            // 区间不合法直接返回0
+            return 0;
+        }
+        int stamp;
+        int[] board;
+        int result;
+        // 乐观查找
+        do {
+            stamp = this.counterboard.getStamp();
+            board = this.counterboard.getReference();
+            result = board[rangeToIndex(departure, arrival)];
+        } while (stamp != this.counterboard.getStamp());
+        return this.amountTicket - result;
+    }
+
+    private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat) {
+        if (this.rangeLegalCheck(departure, arrival)) {
+            return false;
+        }
+        this.aBigLock.lock();
+        try {
+            int[] newBoard = new int[this.maxStationnum * this.maxStationnum];
+            int[] oldBoard = this.counterboard.getReference();
+            for (int d = 1; d < maxStationnum; d++) {
+                for (int a = d + 1; a <= maxStationnum; a++) {
+                    if (rangeLegalCheck(d, a)) {
+                        continue;
+                    }
+                    newBoard[rangeToIndex(d, a)] = oldBoard[rangeToIndex(d, a)];
+                    if (d < arrival && a > departure) {
+                        if (seat.isRangeOccupied(d, a)) {
+                            continue; // 之前已经记录过了，不需要再修改
+                        }
+                        if (isBuy) {
+                            newBoard[rangeToIndex(d, a)]--;
+                        } else {
+                            newBoard[rangeToIndex(d, a)]++;
+                        }
+                    }
+                }
+            }
+            this.counterboard.set(newBoard, this.counterboard.getStamp()+1);
+            return true;
+        } finally {
+            this.aBigLock.unlock();
+        }
+    }
+
+    @Override
+    public boolean buyRange(int departure, int arrival, Seat seat) {
+        return this.modifyRange(departure, arrival, true, seat);
+    }
+
+    @Override
+    public boolean refundRange(int departure, int arrival, Seat seat) {
+        return this.modifyRange(departure, arrival, false, seat);
+    }
+}
+
+class SeatLevelFCStampedRemainTicketCounter extends TrainRemainTicketCounter {
+    private int[][] counterboard;
+    private StampedLock[] threadLock; // 线程间同步
+    private AtomicInteger stamp;
+    private int maxStationnum;
+    private int amountTicket;
+    private int threadnum;
+
+    SeatLevelFCStampedRemainTicketCounter(int stationnum, int coachnum, int seatnum, int threadnum) {
+        this.maxStationnum = stationnum;
+        this.threadnum = threadnum;
+        int rangeCount = stationnum * stationnum; // 这里浪费了一半内存
+        this.amountTicket = coachnum * seatnum;
+        this.threadLock = new StampedLock[threadnum];
         this.counterboard = new int[threadnum][rangeCount];
-        this.lock = new StampedLock();
+        this.stamp = new AtomicInteger(0);
         for (int i = 0; i < threadnum; i++) {
-            this.threadLock[i] = new ReentrantReadWriteLock();
+            this.threadLock[i] = new StampedLock();
             for(int j = 0; j < rangeCount; j++) {
                 this.counterboard[i][j] = 0;
             }
@@ -348,18 +432,21 @@ class SeatLevelFCReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
             // 区间不合法直接返回0
             return 0;
         }
-        int delta = 0;
-        // 乐观读不成功
-        long stamp[] = new long[this.threadnum];
-        for(int i=0; i < this.threadnum; i++){
-            this.threadLock[i].readLock().lock();
-        }
-        for(int i=0; i< this.threadnum; i++){
-            delta += this.counterboard[i][rangeToIndex(departure, arrival)];
-        }
-        for(int i=0; i<this.threadnum; i++){
-            this.threadLock[i].readLock().unlock();
-        }
+        int delta = 0, threadDelta=0;
+        long threadStamp, globalStamp ,counter=0;
+
+        do {
+            delta = 0;
+            globalStamp = stamp.get();
+            for(int i=0; i < this.threadnum; i++){
+                do {
+                    threadStamp = this.threadLock[i].tryOptimisticRead();
+                    threadDelta = this.counterboard[i][rangeToIndex(departure, arrival)];
+                } while (!this.threadLock[i].validate(threadStamp));
+                delta += threadDelta;
+            }
+        } while (globalStamp != stamp.get());
+
         return this.amountTicket + delta;
     }
 
@@ -368,7 +455,7 @@ class SeatLevelFCReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
             return false;
         }
         int threadNr = MyThreadId.get() % this.threadnum;
-        this.threadLock[threadNr].writeLock().lock();
+        long threadStamp = this.threadLock[threadNr].writeLock();
         try {
             for (int d = 1; d < maxStationnum; d++) {
                 for (int a = d + 1; a <= maxStationnum; a++) {
@@ -387,9 +474,10 @@ class SeatLevelFCReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
                     }
                 }
             }
+            stamp.getAndIncrement();
             return true;
         } finally {
-            this.threadLock[threadNr].writeLock().unlock();
+            this.threadLock[threadNr].unlockWrite(threadStamp);
         }
     }
 

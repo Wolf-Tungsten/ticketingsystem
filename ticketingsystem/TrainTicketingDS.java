@@ -3,6 +3,7 @@ package ticketingsystem;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -535,12 +536,12 @@ class AdptGraFCTrainTicketingDS extends TrainTicketingDS {
     }
 }
 
-class AdptGraFCReadWriteTrainTicketingDS extends TrainTicketingDS {
+class AdptGraFCStampedTrainTicketingDS extends TrainTicketingDS {
 
-    AdptGraFCReadWriteTrainTicketingDS(int trainNr, int coachnum, int seatnum, int stationnum, int threadnum) {
+    AdptGraFCStampedTrainTicketingDS(int trainNr, int coachnum, int seatnum, int stationnum, int threadnum) {
         super(trainNr, coachnum, seatnum, stationnum, threadnum);
         this.bitmap = new AdaptiveGranularityTrainSeatOccupiedBitmap(stationnum, coachnum, seatnum, threadnum);
-        this.remainCounter = new SeatLevelFCReadWriteRemainTicketCounter(stationnum, coachnum, seatnum, threadnum);
+        this.remainCounter = new SeatLevelFCStampedRemainTicketCounter(stationnum, coachnum, seatnum, threadnum);
     }
 
     public Ticket buyTicket(String passenger, int departure, int arrival) {
@@ -639,3 +640,4 @@ class AdptGraFCReadWriteTrainTicketingDS extends TrainTicketingDS {
         return true;
     }
 }
+
