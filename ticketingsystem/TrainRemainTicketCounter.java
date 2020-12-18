@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.StampedLock;
 
@@ -315,7 +316,7 @@ class SeatLevelFCRemainTicketCounter extends TrainRemainTicketCounter {
 
 class SeatLevelFCReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
     private int[][] counterboard;
-    private StampedLock[] threadLock;
+    private ReadWriteLock[] threadLock;
     private int maxStationnum;
     private StampedLock lock;
     private int amountTicket;
@@ -326,11 +327,11 @@ class SeatLevelFCReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
         this.threadnum = threadnum;
         int rangeCount = stationnum * stationnum; // 这里浪费了一半内存
         this.amountTicket = coachnum * seatnum;
-        this.threadLock = new StampedLock[threadnum];
+        this.threadLock = new ReadWriteLock[threadnum];
         this.counterboard = new int[threadnum][rangeCount];
         this.lock = new StampedLock();
         for (int i = 0; i < threadnum; i++) {
-            this.threadLock[i] = new StampedLock();
+            this.threadLock[i] = new ReentrantReadWriteLock();
             for(int j = 0; j < rangeCount; j++) {
                 this.counterboard[i][j] = 0;
             }
@@ -348,30 +349,16 @@ class SeatLevelFCReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
             return 0;
         }
         int delta = 0;
-        long optimiseStamp;
-        int optimiseSuccess=0;
-        // 先进行乐观读
-        for(int i=0; i < this.threadnum; i++){
-            optimiseStamp = this.threadLock[i].tryOptimisticRead();
-            delta += this.counterboard[i][rangeToIndex(departure, arrival)];
-            if(this.threadLock[i].validate(optimiseStamp)){
-                optimiseSuccess++;
-            } else {
-                break;
-            }
-        }
-        if(optimiseSuccess == this.threadnum){
-            // 乐观读成功
-            return this.amountTicket + delta;
-        }
         // 乐观读不成功
         long stamp[] = new long[this.threadnum];
         for(int i=0; i < this.threadnum; i++){
-            stamp[i] = this.threadLock[i].readLock();
+            this.threadLock[i].readLock().lock();
         }
         for(int i=0; i< this.threadnum; i++){
             delta += this.counterboard[i][rangeToIndex(departure, arrival)];
-            this.threadLock[i].unlockRead(stamp[i]);
+        }
+        for(int i=0; i<this.threadnum; i++){
+            this.threadLock[i].readLock().unlock();
         }
         return this.amountTicket + delta;
     }
@@ -381,7 +368,7 @@ class SeatLevelFCReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
             return false;
         }
         int threadNr = MyThreadId.get() % this.threadnum;
-        long stamp = this.threadLock[threadNr].writeLock();
+        this.threadLock[threadNr].writeLock().lock();
         try {
             for (int d = 1; d < maxStationnum; d++) {
                 for (int a = d + 1; a <= maxStationnum; a++) {
@@ -402,7 +389,7 @@ class SeatLevelFCReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
             }
             return true;
         } finally {
-            this.threadLock[threadNr].unlockWrite(stamp);
+            this.threadLock[threadNr].writeLock().unlock();
         }
     }
 
