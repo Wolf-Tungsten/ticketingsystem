@@ -533,16 +533,20 @@ class CoachLevelRemainTicketHint extends TrainRemainTicketCounter{
 
     public int hintSeatIndex(int departure, int arrival){
         int coachStartPoint = this.rand.nextInt(this.coachnum);
-        int coachIndex;
+        int coachIndex, coachRemain;
+        int maxRemain=-10, maxRemainCoach=0;
         for(int i=0; i<this.coachnum; i++){
             coachIndex = (coachStartPoint + i)%this.coachnum;
-            if(this.counterboard[coachIndex][rangeToIndex(departure, arrival)] > 0){
+            coachRemain = this.counterboard[coachIndex][rangeToIndex(departure, arrival)];
+            if(coachRemain > maxRemain){
                 // 这个车厢这个区间有空座
-                return coachIndex * this.seatnum + this.rand.nextInt(this.seatnum << 1);
+                maxRemain = coachRemain;
+                maxRemainCoach = coachIndex;
             }
         }
+        return maxRemainCoach * this.seatnum + this.rand.nextInt(this.seatnum << 1);
         // 什么？都没有空座？
-        return this.rand.nextInt(this.seatAmount);
+        // return this.rand.nextInt(this.seatAmount);
     }
 
     @Override
