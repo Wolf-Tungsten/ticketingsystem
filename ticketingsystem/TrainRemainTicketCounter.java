@@ -1,5 +1,6 @@
 package ticketingsystem;
 
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -21,6 +22,10 @@ public abstract class TrainRemainTicketCounter {
         // 检查区间合法性
         return departure >= 1 && arrival <= maxStationnum && (arrival - departure > 0);
     }
+
+    protected int rangeToIndex(int departure, int arrival) {
+        return (departure - 1) * maxStationnum + (arrival - 1);
+    }
 }
 
 // 座位操作互斥-AtomicInteger实现的计数器
@@ -37,9 +42,6 @@ class SeatLevelAtomicRemainTicketCounter extends TrainRemainTicketCounter {
         }
     }
 
-    private int rangeToIndex(int departure, int arrival) {
-        return (departure - 1) * maxStationnum + (arrival - 1);
-    }
 
     @Override
     public int inquiryRemainTicket(int departure, int arrival) {
@@ -98,10 +100,6 @@ class SeatLevelLongAdderRemainTicketCounter extends TrainRemainTicketCounter {
             this.counterboard[i] = new LongAdder();
             this.counterboard[i].add(coachnum * seatnum);
         }
-    }
-
-    private int rangeToIndex(int departure, int arrival) {
-        return (departure - 1) * maxStationnum + (arrival - 1);
     }
 
     @Override
@@ -163,9 +161,6 @@ class SeatLevelReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
         }
     }
 
-    private int rangeToIndex(int departure, int arrival) {
-        return (departure - 1) * maxStationnum + (arrival - 1);
-    }
 
     @Override
     public int inquiryRemainTicket(int departure, int arrival) {
@@ -246,9 +241,6 @@ class SeatLevelFCRemainTicketCounter extends TrainRemainTicketCounter {
         }
     }
 
-    private int rangeToIndex(int departure, int arrival) {
-        return (departure - 1) * maxStationnum + (arrival - 1);
-    }
 
     @Override
     public int inquiryRemainTicket(int departure, int arrival) {
@@ -330,10 +322,6 @@ class AtomicStampedRemainTicketCounter extends TrainRemainTicketCounter {
             innerCounterboard[i] = 0;
         }
         this.counterboard.set(innerCounterboard, 0);
-    }
-
-    private int rangeToIndex(int departure, int arrival) {
-        return (departure - 1) * maxStationnum + (arrival - 1);
     }
 
     @Override
@@ -422,10 +410,6 @@ class SeatLevelFCStampedRemainTicketCounter extends TrainRemainTicketCounter {
         }
     }
 
-    private int rangeToIndex(int departure, int arrival) {
-        return (departure - 1) * maxStationnum + (arrival - 1);
-    }
-
     @Override
     public int inquiryRemainTicket(int departure, int arrival) {
         if (this.rangeLegalCheck(departure, arrival)) {
@@ -489,5 +473,90 @@ class SeatLevelFCStampedRemainTicketCounter extends TrainRemainTicketCounter {
     @Override
     public boolean refundRange(int departure, int arrival, Seat seat) {
         return this.modifyRange(departure, arrival, false, seat);
+    }
+}
+
+class CoachLevelRemainTicketHint extends TrainRemainTicketCounter{
+    private int[][] counterboard;
+    private int maxStationnum;
+    private int amountTicket;
+    private int coachnum;
+    private int seatnum;
+    private int seatAmount;
+    private ThreadLocalRandom rand;
+    CoachLevelRemainTicketHint(int stationnum, int coachnum, int seatnum, int threadnum) {
+        this.maxStationnum = stationnum;
+        int rangeCount = stationnum * stationnum; // 这里浪费了一半内存
+        this.amountTicket = coachnum * seatnum;
+        this.coachnum = coachnum;
+        this.seatnum = seatnum;
+        this.seatAmount = coachnum * seatnum;
+        this.counterboard = new int[coachnum][rangeCount];
+        this.rand = ThreadLocalRandom.current();
+        for (int i = 0; i < coachnum; i++) {
+            for(int j=0; j < rangeCount; j++)
+                this.counterboard[i][j] = amountTicket;
+        }
+    }
+    private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat, int seatIndex) {
+        if (this.rangeLegalCheck(departure, arrival)) {
+            return false;
+        }
+        int coachIndex = seatIndex / this.seatnum;
+        for (int d = 1; d < maxStationnum; d++) {
+            for (int a = d + 1; a <= maxStationnum; a++) {
+                if (rangeLegalCheck(d, a)) {
+                    continue;
+                }
+                if (d < arrival && a > departure) {
+                    if (seat.isRangeOccupied(d, a)) {
+                        continue; // 之前已经记录过了，不需要再修改
+                    }
+                    if (isBuy) {
+                        this.counterboard[coachIndex][rangeToIndex(d, a)]--;
+                    } else {
+                        this.counterboard[coachIndex][rangeToIndex(d, a)]++;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public boolean buyRange(int departure, int arrival, Seat seat, int seatIndex) {
+        return this.modifyRange(departure, arrival, true, seat, seatIndex);
+    }
+
+    public boolean refundRange(int departure, int arrival, Seat seat, int seatIndex) {
+        return this.modifyRange(departure, arrival, false, seat, seatIndex);
+    }
+
+    public int hintSeatIndex(int departure, int arrival){
+        int coachStartPoint = this.rand.nextInt(this.coachnum);
+        int coachIndex;
+        for(int i=0; i<this.coachnum; i++){
+            coachIndex = (coachStartPoint + i)%this.coachnum;
+            if(this.counterboard[coachIndex][rangeToIndex(departure, arrival)] > 0){
+                // 这个车厢这个区间有空座
+                return coachIndex * this.seatnum + this.rand.nextInt(this.seatnum << 1);
+            }
+        }
+        // 什么？都没有空座？
+        return this.rand.nextInt(this.seatAmount);
+    }
+
+    @Override
+    public int inquiryRemainTicket(int departure, int arrival) {
+        return 0;
+    }
+
+    @Override
+    public boolean buyRange(int departure, int arrival, Seat seat) {
+        return false;
+    }
+
+    @Override
+    public boolean refundRange(int departure, int arrival, Seat seat) {
+        return false;
     }
 }

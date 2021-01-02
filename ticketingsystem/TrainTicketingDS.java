@@ -14,6 +14,7 @@ abstract public class TrainTicketingDS {
     protected ArrayList<ArrayList<ConcurrentHashMap<Long, Ticket>>> coachTicketRecord;
     protected TrainRemainTicketCounter remainCounter;
     protected TrainSeatOccupiedBitmap bitmap;
+    protected CoachLevelRemainTicketHint hinter;
     protected int trainNr;
     protected ThreadLocal<Random> rnd;
     protected int stationnum;
@@ -542,6 +543,7 @@ class AdptGraFCStampedTrainTicketingDS extends TrainTicketingDS {
         super(trainNr, coachnum, seatnum, stationnum, threadnum);
         this.bitmap = new AdaptiveGranularityTrainSeatOccupiedBitmap(stationnum, coachnum, seatnum, threadnum);
         this.remainCounter = new SeatLevelFCStampedRemainTicketCounter(stationnum, coachnum, seatnum, threadnum);
+        this.hinter = new CoachLevelRemainTicketHint(stationnum, coachnum, seatnum, threadnum);
     }
 
     public Ticket buyTicket(String passenger, int departure, int arrival) {
@@ -553,7 +555,7 @@ class AdptGraFCStampedTrainTicketingDS extends TrainTicketingDS {
         }
         // 随机获取一个座位开始尝试占座
         // int seatStartPoint = this.randomSeatIndex();
-        int seatStartPoint = this.randomSeatIndex();
+        int seatStartPoint = this.hinter.hintSeatIndex(departure, arrival);
         int seatIndex = 0;
         Seat currentSeat = null;
         boolean success = false;
@@ -578,6 +580,8 @@ class AdptGraFCStampedTrainTicketingDS extends TrainTicketingDS {
                 }
                 // 很好，座位还是空的，赶紧占上
                 this.remainCounter.buyRange(departure, arrival, currentSeat);
+                // 更新hinter
+                this.hinter.buyRange(departure, arrival, currentSeat, seatIndex);
                 currentSeat.occupyRange(departure, arrival);
                 // 标记购票成功
                 success = true;
@@ -631,10 +635,13 @@ class AdptGraFCStampedTrainTicketingDS extends TrainTicketingDS {
         try {
             currentSeat.releaseRange(ticketRecord.departure, ticketRecord.arrival);
             this.remainCounter.refundRange(ticketRecord.departure, ticketRecord.arrival, currentSeat);
+            // 更新hinter
+            this.hinter.refundRange(ticketRecord.departure, ticketRecord.arrival, currentSeat, seatIndex);
         } finally {
             bitmap.unlockSeat(seatIndex);
         }
         // 将记录置为空，防止tid重复
+
         this.coachTicketRecord.get(ticket.coach - 1).get(ticket.seat - 1).replace(ticketRecord.tid, firedTicket);
         //System.out.printf("成功退票<%s> 列车：%d 乘客：%s，出发：%d，到站：%d \n", ticket.tid, this.trainNr, ticket.passenger, ticket.departure, ticket.arrival);
         return true;

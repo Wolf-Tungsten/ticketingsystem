@@ -35,10 +35,10 @@ public class Test {
     }
 
     public static void main(String[] args) throws InterruptedException {
-        final int[] threadNums = {4, 8, 16, 32, 64};
+        final int[] threadNums = {4, 8, 16, 32, 64, 128};
         int p;
         for (p = 0; p < threadNums.length; ++p) {
-            for (int r = 0; r < 4; r++) {
+            for (int r = 0; r < 5; r++) {
                 final TicketingDS tds = new TicketingDS(ROUTE_NUM, COACH_NUM, SEAT_NUM, STATION_NUM, threadNums[p]);
                 Thread[] threads = new Thread[threadNums[p]];
                 for (int i = 0; i < threadNums[p]; i++) {
