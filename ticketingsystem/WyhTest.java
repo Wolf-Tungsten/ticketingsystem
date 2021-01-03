@@ -24,8 +24,10 @@ public class WyhTest {
         System.out.printf("%s   %20s   %30s   %15s   %15s   %15s   %15s\n",
                 "Thread Num", "Total execution", "Total execution time (ms)", "Kops/s", "refund/ns", "buy/ns", "inquiry/ns");
         for(int threadNum = 4; threadNum <= 64; threadNum *= 2) {
-            Tester tester = new Tester(threadNum, routenum, coachnum, seatnum, stationnum, testnum);
-            tester.runTest();
+            for(int i=0; i < 6; i++){
+                Tester tester = new Tester(threadNum, routenum, coachnum, seatnum, stationnum, testnum);
+                tester.runTest();
+            }
         }
     }
 }
