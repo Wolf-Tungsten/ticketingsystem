@@ -220,7 +220,6 @@ class SeatLevelReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
 class SeatLevelFCRemainTicketCounter extends TrainRemainTicketCounter {
     private int[][] counterboard;
     private StampedLock[] threadLock;
-    private int maxStationnum;
     private StampedLock lock;
     private int amountTicket;
     private int threadnum;
@@ -244,7 +243,7 @@ class SeatLevelFCRemainTicketCounter extends TrainRemainTicketCounter {
 
     @Override
     public int inquiryRemainTicket(int departure, int arrival) {
-        if (this.rangeLegalCheck(departure, arrival)) {
+        if (!this.rangeLegalCheck(departure, arrival)) {
             // 区间不合法直接返回0
             return 0;
         }
@@ -264,7 +263,7 @@ class SeatLevelFCRemainTicketCounter extends TrainRemainTicketCounter {
     }
 
     private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat) {
-        if (this.rangeLegalCheck(departure, arrival)) {
+        if (!this.rangeLegalCheck(departure, arrival)) {
             return false;
         }
         int threadNr = MyThreadId.get() % this.threadnum;
@@ -272,7 +271,7 @@ class SeatLevelFCRemainTicketCounter extends TrainRemainTicketCounter {
         try {
             for (int d = 1; d < maxStationnum; d++) {
                 for (int a = d + 1; a <= maxStationnum; a++) {
-                    if (rangeLegalCheck(d, a)) {
+                    if (!rangeLegalCheck(d, a)) {
                         continue;
                     }
                     if (d < arrival && a > departure) {
@@ -307,7 +306,6 @@ class SeatLevelFCRemainTicketCounter extends TrainRemainTicketCounter {
 class AtomicStampedRemainTicketCounter extends TrainRemainTicketCounter {
     private AtomicStampedReference<int[]> counterboard;
     private ReentrantLock aBigLock;
-    private int maxStationnum;
     private int amountTicket;
     private int threadnum;
 
@@ -326,7 +324,7 @@ class AtomicStampedRemainTicketCounter extends TrainRemainTicketCounter {
 
     @Override
     public int inquiryRemainTicket(int departure, int arrival) {
-        if (this.rangeLegalCheck(departure, arrival)) {
+        if (!this.rangeLegalCheck(departure, arrival)) {
             // 区间不合法直接返回0
             return 0;
         }
@@ -343,7 +341,7 @@ class AtomicStampedRemainTicketCounter extends TrainRemainTicketCounter {
     }
 
     private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat) {
-        if (this.rangeLegalCheck(departure, arrival)) {
+        if (!this.rangeLegalCheck(departure, arrival)) {
             return false;
         }
         this.aBigLock.lock();
@@ -352,7 +350,7 @@ class AtomicStampedRemainTicketCounter extends TrainRemainTicketCounter {
             int[] oldBoard = this.counterboard.getReference();
             for (int d = 1; d < maxStationnum; d++) {
                 for (int a = d + 1; a <= maxStationnum; a++) {
-                    if (rangeLegalCheck(d, a)) {
+                    if (!rangeLegalCheck(d, a)) {
                         continue;
                     }
                     newBoard[rangeToIndex(d, a)] = oldBoard[rangeToIndex(d, a)];
@@ -390,7 +388,6 @@ class SeatLevelFCStampedRemainTicketCounter extends TrainRemainTicketCounter {
     private int[][] counterboard;
     private StampedLock[] threadLock; // 线程间同步
     private AtomicInteger stamp;
-    private int maxStationnum;
     private int amountTicket;
     private int threadnum;
 
@@ -412,7 +409,7 @@ class SeatLevelFCStampedRemainTicketCounter extends TrainRemainTicketCounter {
 
     @Override
     public int inquiryRemainTicket(int departure, int arrival) {
-        if (this.rangeLegalCheck(departure, arrival)) {
+        if (!this.rangeLegalCheck(departure, arrival)) {
             // 区间不合法直接返回0
             return 0;
         }
@@ -435,7 +432,7 @@ class SeatLevelFCStampedRemainTicketCounter extends TrainRemainTicketCounter {
     }
 
     private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat) {
-        if (this.rangeLegalCheck(departure, arrival)) {
+        if (!this.rangeLegalCheck(departure, arrival)) {
             return false;
         }
         int threadNr = MyThreadId.get() % this.threadnum;
@@ -443,7 +440,7 @@ class SeatLevelFCStampedRemainTicketCounter extends TrainRemainTicketCounter {
         try {
             for (int d = 1; d < maxStationnum; d++) {
                 for (int a = d + 1; a <= maxStationnum; a++) {
-                    if (rangeLegalCheck(d, a)) {
+                    if (!rangeLegalCheck(d, a)) {
                         continue;
                     }
                     if (d < arrival && a > departure) {
@@ -478,7 +475,6 @@ class SeatLevelFCStampedRemainTicketCounter extends TrainRemainTicketCounter {
 
 class CoachLevelRemainTicketHint extends TrainRemainTicketCounter{
     private int[][] counterboard;
-    private int maxStationnum;
     private int amountTicket;
     private int coachnum;
     private int seatnum;
@@ -499,13 +495,13 @@ class CoachLevelRemainTicketHint extends TrainRemainTicketCounter{
         }
     }
     private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat, int seatIndex) {
-        if (this.rangeLegalCheck(departure, arrival)) {
+        if (!this.rangeLegalCheck(departure, arrival)) {
             return false;
         }
         int coachIndex = seatIndex / this.seatnum;
         for (int d = 1; d < maxStationnum; d++) {
             for (int a = d + 1; a <= maxStationnum; a++) {
-                if (rangeLegalCheck(d, a)) {
+                if (!rangeLegalCheck(d, a)) {
                     continue;
                 }
                 if (d < arrival && a > departure) {
