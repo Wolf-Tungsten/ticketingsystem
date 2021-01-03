@@ -10,7 +10,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
-public class Test {
+public class CSTest {
 
     private static class MyRunnable implements Runnable {
 
