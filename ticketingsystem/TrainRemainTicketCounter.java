@@ -31,7 +31,6 @@ public abstract class TrainRemainTicketCounter {
 // 座位操作互斥-AtomicInteger实现的计数器
 class SeatLevelAtomicRemainTicketCounter extends TrainRemainTicketCounter {
     private AtomicInteger[] counterboard;
-    private int maxStationnum;
 
     SeatLevelAtomicRemainTicketCounter(int stationnum, int coachnum, int seatnum) {
         this.maxStationnum = stationnum;
@@ -45,7 +44,7 @@ class SeatLevelAtomicRemainTicketCounter extends TrainRemainTicketCounter {
 
     @Override
     public int inquiryRemainTicket(int departure, int arrival) {
-        if (this.rangeLegalCheck(departure, arrival)) {
+        if (!this.rangeLegalCheck(departure, arrival)) {
             // 区间不合法直接返回0
             return 0;
         }
@@ -53,12 +52,12 @@ class SeatLevelAtomicRemainTicketCounter extends TrainRemainTicketCounter {
     }
 
     private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat) {
-        if (this.rangeLegalCheck(departure, arrival)) {
+        if (!this.rangeLegalCheck(departure, arrival)) {
             return false;
         }
         for (int d = 1; d < maxStationnum; d++) {
             for (int a = d + 1; a <= maxStationnum; a++) {
-                if (rangeLegalCheck(d, a)) {
+                if (!rangeLegalCheck(d, a)) {
                     continue;
                 }
                 if (d < arrival && a > departure) {
@@ -90,7 +89,6 @@ class SeatLevelAtomicRemainTicketCounter extends TrainRemainTicketCounter {
 // 座位操作互斥-LongAdder实现的计数器
 class SeatLevelLongAdderRemainTicketCounter extends TrainRemainTicketCounter {
     private LongAdder[] counterboard;
-    private int maxStationnum;
 
     SeatLevelLongAdderRemainTicketCounter(int stationnum, int coachnum, int seatnum) {
         this.maxStationnum = stationnum;
@@ -104,7 +102,7 @@ class SeatLevelLongAdderRemainTicketCounter extends TrainRemainTicketCounter {
 
     @Override
     public int inquiryRemainTicket(int departure, int arrival) {
-        if (this.rangeLegalCheck(departure, arrival)) {
+        if (!this.rangeLegalCheck(departure, arrival)) {
             // 区间不合法直接返回0
             return 0;
         }
@@ -112,12 +110,12 @@ class SeatLevelLongAdderRemainTicketCounter extends TrainRemainTicketCounter {
     }
 
     private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat) {
-        if (this.rangeLegalCheck(departure, arrival)) {
+        if (!this.rangeLegalCheck(departure, arrival)) {
             return false;
         }
         for (int d = 1; d < maxStationnum; d++) {
             for (int a = d + 1; a <= maxStationnum; a++) {
-                if (rangeLegalCheck(d, a)) {
+                if (!rangeLegalCheck(d, a)) {
                     continue;
                 }
                 if (d < arrival && a > departure) {
@@ -148,7 +146,6 @@ class SeatLevelLongAdderRemainTicketCounter extends TrainRemainTicketCounter {
 
 class SeatLevelReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
     private int[] counterboard;
-    private int maxStationnum;
     private ReentrantReadWriteLock lock;
 
     SeatLevelReadWriteRemainTicketCounter(int stationnum, int coachnum, int seatnum) {
@@ -164,7 +161,7 @@ class SeatLevelReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
 
     @Override
     public int inquiryRemainTicket(int departure, int arrival) {
-        if (this.rangeLegalCheck(departure, arrival)) {
+        if (!this.rangeLegalCheck(departure, arrival)) {
             // 区间不合法直接返回0
             return 0;
         }
@@ -178,14 +175,14 @@ class SeatLevelReadWriteRemainTicketCounter extends TrainRemainTicketCounter {
     }
 
     private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat) {
-        if (this.rangeLegalCheck(departure, arrival)) {
+        if (!this.rangeLegalCheck(departure, arrival)) {
             return false;
         }
         this.lock.writeLock().lock();
         try {
             for (int d = 1; d < maxStationnum; d++) {
                 for (int a = d + 1; a <= maxStationnum; a++) {
-                    if (rangeLegalCheck(d, a)) {
+                    if (!rangeLegalCheck(d, a)) {
                         continue;
                     }
                     if (d < arrival && a > departure) {

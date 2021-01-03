@@ -25,7 +25,7 @@ public class ForceTest{
         if(!success){
             return;
         }
-        int[] attackThread = {10, 50, 100, 200, 400, 800, 1024, 2048, 4096};
+        int[] attackThread = {10, 25, 50, 100, 200, 400, 800, 1024, 2048, 4096};
         outer:for(int i=0; i < attackThread.length; i++){
             for(int j=0; j < 3; j++) {
                 count++;
@@ -42,7 +42,7 @@ public class ForceTest{
             }
         }
         if(success) {
-            System.out.println("[Passed]查询实现是可线性化的");
+            System.out.println("[Passed] Your implementation has a high probability of being linearizable");
         }
     }
 }
@@ -63,7 +63,7 @@ class BuyTest{
 
     public void fire(TicketingDS ds, int testAmount){
         if(testAmount > seatAmount){
-            System.out.println("[Error]测试数量不可大于座位总数");
+            System.out.println("[Error] testAmount is greater then seatAmount");
         }
         Thread t[] = new Thread[testAmount];
         for(int i=0; i < testAmount; i++){
@@ -79,10 +79,6 @@ class BuyTest{
         }
     }
 
-    public void fire(TicketingDS ds){
-        this.fire(ds, seatAmount);
-    }
-
     public boolean verify(TicketingDS ds, int testAmount){
         boolean occupiedCheck[] = new boolean[seatAmount];
         for(int i=0; i < seatAmount; i++){
@@ -90,22 +86,22 @@ class BuyTest{
         }
         for(int i=0; i < testAmount; i++){
             if(ticket[i] == null){
-                System.out.println("[Failed]存在没有买到票的线程");
+                System.out.println("[Failed] Some threads didn't get a ticket");
                 return false;
             }
             int seatIndex = (ticket[i].coach - 1) * seatnum + (ticket[i].seat - 1);
             if(occupiedCheck[seatIndex]){
-                System.out.println("[Failed]相同座位被出售给了不同的人");
+                System.out.println("[Failed] Duplicate seat");
                 return false;
             }
             occupiedCheck[seatIndex]=true;
         }
         if(ds.inquiry(1, 1, stationnum) != (seatAmount - testAmount)){
             System.out.println(ds.inquiry(1, 1, stationnum));
-            System.out.println("[Failed]余票数量不正确");
+            System.out.println("[Failed] Wrong remain ticket amount");
             return false;
         }
-        System.out.println("[Passed]暴力买票测试通过");
+        System.out.println("[Passed] Force buy test passed");
         return true;
     }
 
@@ -169,8 +165,8 @@ class InquiryModifyOverlapTest {
                 this.counterboard[departure][arrival] = ds.inquiry(1, departure, arrival);
             }
         }
-        if(this.counterboard[1][stationnum] < 10){
-            System.out.println("[Error]至少保证有10张以上余票");
+        if(this.counterboard[1][stationnum] < 100){
+            System.out.println("[Error] Keep at least 10 tickets for test");
             return false;
         }
         // 创建attackThreadNr个攻击线程
@@ -202,13 +198,13 @@ class InquiryModifyOverlapTest {
             @Override
             public void run() {
                 for(int i=0; i < attackNr << 4; i++){
-                    int departure = rand.nextInt(stationnum - 1);
-                    int arrival = departure + 1 + rand.nextInt(stationnum - departure - 1);
+                    int departure = 1;
+                    int arrival = stationnum/2;
                     int result = ds.inquiry(1, departure, arrival);
                     if(result == counterboard[departure][arrival] || result == counterboard[departure][arrival]-1){
                         continue;
                     } else {
-                        System.out.printf("[Failed]查询结果不可线性化 预期结果:%d/%d 实际结果:%d\n",
+                        System.out.printf("[Failed] Inquiry result is unlinearizable (expect:%d/%d result:%d)\n",
                                 counterboard[departure][arrival], counterboard[departure][arrival]-1, result);
                         success.set(false);
                     }
@@ -226,10 +222,10 @@ class InquiryModifyOverlapTest {
             inquiryThread.join();
         }catch (InterruptedException e){}
         if(success.get()){
-            System.out.printf("[Passed]%d倍修改查询重叠测试通过\n",attackThreadNr * 2);
+            System.out.printf("[Passed] %d times overlap test passed\n",attackThreadNr * 2);
             return true;
         } else {
-            System.out.printf("[Failed]%d倍修改查询重叠测试失败\n",attackThreadNr * 2);
+            System.out.printf("[Failed] %d times overlap test failed\n",attackThreadNr * 2);
             return false;
         }
     }

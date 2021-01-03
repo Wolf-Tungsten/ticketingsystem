@@ -11,7 +11,7 @@ public class Test {
     private final static int SEAT_NUM = 100;
     private final static int STATION_NUM = 16;
 
-    private final static int TEST_NUM = 1000000;
+    private final static int TEST_NUM = 100000;
     private final static int refund = 10;
     private final static int buy = 30;
     private final static int query = 100;
