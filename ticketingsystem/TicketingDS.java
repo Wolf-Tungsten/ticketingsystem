@@ -11,7 +11,7 @@ public class TicketingDS implements TicketingSystem {
 			// 区间锁-懒计数
 			//this.trains[trainNr - 1] = new AdptGraAtomicTrainTicketingDS(
 					//trainNr, coachnum, seatnum, stationnum, threadnum);
-			this.trains[trainNr - 1] = new AdptGraFCTrainTicketingDS(trainNr, coachnum, seatnum,stationnum,threadnum);
+			this.trains[trainNr - 1] = new AdptGraFCStampedTrainTicketingDS(trainNr, coachnum, seatnum,stationnum,threadnum);
 		}
 	}
 
