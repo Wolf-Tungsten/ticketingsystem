@@ -8,9 +8,6 @@ public class TicketingDS implements TicketingSystem {
 		this.routenum = routenum;
 		this.trains = new TrainTicketingDS[routenum];
 		for(int trainNr = 1; trainNr <= routenum; trainNr++){
-			// 区间锁-懒计数
-			//this.trains[trainNr - 1] = new AdptGraAtomicTrainTicketingDS(
-					//trainNr, coachnum, seatnum, stationnum, threadnum);
 			this.trains[trainNr - 1] = new AdptGraFCStampedTrainTicketingDS(trainNr, coachnum, seatnum,stationnum,threadnum);
 		}
 	}
@@ -38,6 +35,4 @@ public class TicketingDS implements TicketingSystem {
 		}
 		return this.trains[ticket.route - 1].refundTicket(ticket);
 	}
-
-
 }

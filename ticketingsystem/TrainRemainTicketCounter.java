@@ -28,7 +28,6 @@ public abstract class TrainRemainTicketCounter {
     }
 }
 
-// 座位操作互斥-AtomicInteger实现的计数器
 class SeatLevelAtomicRemainTicketCounter extends TrainRemainTicketCounter {
     private AtomicInteger[] counterboard;
 
@@ -86,7 +85,6 @@ class SeatLevelAtomicRemainTicketCounter extends TrainRemainTicketCounter {
     }
 }
 
-// 座位操作互斥-LongAdder实现的计数器
 class SeatLevelLongAdderRemainTicketCounter extends TrainRemainTicketCounter {
     private LongAdder[] counterboard;
 
@@ -286,87 +284,6 @@ class SeatLevelFCRemainTicketCounter extends TrainRemainTicketCounter {
             return true;
         } finally {
             this.threadLock[threadNr].unlockWrite(stamp);
-        }
-    }
-
-    @Override
-    public boolean buyRange(int departure, int arrival, Seat seat) {
-        return this.modifyRange(departure, arrival, true, seat);
-    }
-
-    @Override
-    public boolean refundRange(int departure, int arrival, Seat seat) {
-        return this.modifyRange(departure, arrival, false, seat);
-    }
-}
-
-class AtomicStampedRemainTicketCounter extends TrainRemainTicketCounter {
-    private AtomicStampedReference<int[]> counterboard;
-    private ReentrantLock aBigLock;
-    private int amountTicket;
-    private int threadnum;
-
-    AtomicStampedRemainTicketCounter(int stationnum, int coachnum, int seatnum, int threadnum) {
-        this.maxStationnum = stationnum;
-        this.threadnum = threadnum;
-        int rangeCount = stationnum * stationnum; // 这里浪费了一半内存
-        this.amountTicket = coachnum * seatnum;
-        this.aBigLock = new ReentrantLock();
-        int[] innerCounterboard = new int[stationnum * stationnum];
-        for (int i = 0; i < stationnum * stationnum; i++) {
-            innerCounterboard[i] = 0;
-        }
-        this.counterboard.set(innerCounterboard, 0);
-    }
-
-    @Override
-    public int inquiryRemainTicket(int departure, int arrival) {
-        if (!this.rangeLegalCheck(departure, arrival)) {
-            // 区间不合法直接返回0
-            return 0;
-        }
-        int stamp;
-        int[] board;
-        int result;
-        // 乐观查找
-        do {
-            stamp = this.counterboard.getStamp();
-            board = this.counterboard.getReference();
-            result = board[rangeToIndex(departure, arrival)];
-        } while (stamp != this.counterboard.getStamp());
-        return this.amountTicket - result;
-    }
-
-    private boolean modifyRange(int departure, int arrival, boolean isBuy, Seat seat) {
-        if (!this.rangeLegalCheck(departure, arrival)) {
-            return false;
-        }
-        this.aBigLock.lock();
-        try {
-            int[] newBoard = new int[this.maxStationnum * this.maxStationnum];
-            int[] oldBoard = this.counterboard.getReference();
-            for (int d = 1; d < maxStationnum; d++) {
-                for (int a = d + 1; a <= maxStationnum; a++) {
-                    if (!rangeLegalCheck(d, a)) {
-                        continue;
-                    }
-                    newBoard[rangeToIndex(d, a)] = oldBoard[rangeToIndex(d, a)];
-                    if (d < arrival && a > departure) {
-                        if (seat.isRangeOccupied(d, a)) {
-                            continue; // 之前已经记录过了，不需要再修改
-                        }
-                        if (isBuy) {
-                            newBoard[rangeToIndex(d, a)]--;
-                        } else {
-                            newBoard[rangeToIndex(d, a)]++;
-                        }
-                    }
-                }
-            }
-            this.counterboard.set(newBoard, this.counterboard.getStamp()+1);
-            return true;
-        } finally {
-            this.aBigLock.unlock();
         }
     }
 
